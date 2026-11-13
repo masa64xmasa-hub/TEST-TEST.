@@ -881,7 +881,7 @@
                             if (!currentItem.choices.includes(c)) currentItem.choices.push(c);
                         });
                     }
-                    // 配点の抽出（個別配点が書かれていれば大問の「各〇点」を上書き）
+                    // 配点の抽出（個別配点が書ければ大問の「各〇点」を上書き）
                     const ptMatch = line.match(/(?:配点\s*)?([0-9０-９]+)\s*点/);
                     if (ptMatch) {
                         currentItem.points = parseInt(toHalfNum(ptMatch[1]), 10);
@@ -900,7 +900,11 @@
             const combinedQText = [qText, ocrQText].filter(Boolean).join('\n\n');
             const combinedAText = [aText, ocrAText].filter(Boolean).join('\n\n');
 
+            const qItems = parseQuestionsFromText(combinedQText);
+            const aItems = parseQuestionsFromText(combinedAText);
+
             const issues = [];
+            const comparisonTable = [];
 
             // 1. 誤字脱字・表記ゆれ・括弧・図表チェック
             if (options.typos) {
@@ -1007,6 +1011,55 @@
                 if (combinedQText) checkSheetTotalScore(qItems, '問題用紙');
                 if (combinedAText) checkSheetTotalScore(aItems, '解答用紙');
             }
+
+            // 設問番号の対応比較表を作成
+            const allQNums = [...new Set([...qItems.map(i => i.id), ...aItems.map(i => i.id)])];
+            allQNums.sort();
+            allQNums.forEach(qid => {
+                const qFound = qItems.find(i => i.id === qid);
+                const aFound = aItems.find(i => i.id === qid);
+                if (qFound && aFound) {
+                    comparisonTable.push({
+                        questionId: qid,
+                        status: 'ok',
+                        statusLabel: '一致 OK',
+                        questionSummary: qFound.rawLines.join(' / '),
+                        answerSummary: aFound.rawLines.join(' / ')
+                    });
+                } else if (qFound && !aFound) {
+                    comparisonTable.push({
+                        questionId: qid,
+                        status: 'missing_answer',
+                        statusLabel: '解答欄なし',
+                        questionSummary: qFound.rawLines.join(' / '),
+                        answerSummary: '【該当する解答欄がありません】'
+                    });
+                    issues.push({
+                        severity: 'error',
+                        category: '解答欄の欠落',
+                        location: qid,
+                        description: `問題用紙に「${qid}」がありますが、解答用紙側に対応する解答欄が見当たりません。`,
+                        excerpt: qFound.rawLines[0],
+                        suggestion: '解答用紙に該当する設問の解答欄を追加してください。'
+                    });
+                } else if (!qFound && aFound) {
+                    comparisonTable.push({
+                        questionId: qid,
+                        status: 'missing_question',
+                        statusLabel: '問題文なし',
+                        questionSummary: '【対応する問題文が見つかりません】',
+                        answerSummary: aFound.rawLines.join(' / ')
+                    });
+                    issues.push({
+                        severity: 'warning',
+                        category: '余分な解答欄',
+                        location: qid,
+                        description: `解答用紙に「${qid}」の解答欄がありますが、問題用紙側に対応する設問が見当たりません。`,
+                        excerpt: aFound.rawLines[0],
+                        suggestion: '解答用紙の設問番号を確認するか、問題文を追記してください。'
+                    });
+                }
+            });
 
             if (!combinedQText || !combinedAText) {
                 issues.push({

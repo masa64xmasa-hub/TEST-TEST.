@@ -10,14 +10,17 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Tesseract.js v5 CDN (ブラウザ内日本語・英語OCR) -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-  <!-- Google Fonts: Noto Sans JP -->
+  <!-- Google Fonts: Noto Sans JP & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet" />
   <style>
     body {
       font-family: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background-color: #f8fafc;
+    }
+    .font-mono-editor {
+      font-family: 'JetBrains Mono', 'Noto Sans JP', monospace;
     }
     .drag-over {
       border-color: #3b82f6 !important;
@@ -31,26 +34,36 @@
       background: #cbd5e1;
       border-radius: 4px;
     }
+    /* 行番号のスクロールバー非表示 */
+    .line-numbers::-webkit-scrollbar {
+      display: none;
+    }
   </style>
 </head>
 <body class="text-slate-800 min-h-screen flex flex-col">
 
   <!-- ヘッダー -->
   <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-3 min-w-0">
-        <div class="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-lg shadow-sm shrink-0">
+        <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-xl shadow-sm shrink-0">
           T
         </div>
         <div class="min-w-0">
           <h1 class="text-lg sm:text-xl font-bold tracking-tight text-slate-900 truncate">TEST-TEST.</h1>
-          <p class="text-xs text-slate-500 hidden sm:block truncate">テスト問題・解答用紙 校正＆整合性チェッカー</p>
+          <p class="text-xs text-slate-500 truncate">テスト問題・解答用紙 校正＆整合性チェッカー</p>
         </div>
       </div>
 
-      <div class="flex items-center gap-2 shrink-0">
+      <div class="flex flex-wrap items-center gap-2 shrink-0">
+        <button id="btn-gen-sample-img" type="button" class="text-xs sm:text-sm bg-amber-50 hover:bg-amber-100 active:bg-amber-200 text-amber-800 border border-amber-200 font-medium px-3 py-2 rounded-xl transition inline-flex items-center gap-1.5">
+          <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <span>サンプル画像（ミスあり）を生成</span>
+        </button>
         <button id="btn-load-sample" type="button" class="text-xs sm:text-sm bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-medium px-3 py-2 rounded-xl transition">
-          サンプル（ミスあり）を試す
+          サンプルテキストを読み込む
         </button>
         <button id="btn-clear-all" type="button" class="text-xs sm:text-sm bg-white hover:bg-rose-50 active:bg-rose-100 text-rose-600 border border-rose-200 font-medium px-3 py-2 rounded-xl transition">
           すべてクリア
@@ -73,36 +86,62 @@
   <!-- メインコンテンツ -->
   <main class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
-    <!-- 検査オプションバー -->
-    <section class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex flex-wrap items-center justify-between gap-4">
-      <div class="flex flex-wrap items-center gap-4">
-        <label class="inline-flex items-center gap-2.5 cursor-pointer select-none">
-          <input id="chk-total-score" type="checkbox" checked class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" />
-          <span class="text-sm font-medium text-slate-700">目標合計点（満点）チェックを有効にする</span>
-        </label>
-        <div id="score-input-wrapper" class="flex items-center gap-2 transition-opacity">
-          <input id="input-target-score" type="number" value="100" min="1" max="1000" class="w-24 px-3 py-1.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-right font-bold text-indigo-700" />
-          <span class="text-sm font-medium text-slate-600">点満点</span>
+    <!-- 検査オプション設定パネル -->
+    <section class="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 shadow-sm space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-indigo-600"></span>
+          <h2 class="text-sm font-bold text-slate-800">検査オプション設定</h2>
+        </div>
+        <div id="live-stats" class="text-xs text-slate-500 font-medium bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
+          問題用紙: 0文字 / 0行 / 画像0枚 ｜ 解答用紙: 0文字 / 0行 / 画像0枚
         </div>
       </div>
 
-      <div class="text-xs text-slate-500 flex items-center gap-1.5">
-        <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
-        <span>ブラウザ内完結（APIキー不要）・画像OCR＆テキスト自動照合</span>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
+        <!-- 合計点チェック -->
+        <div class="flex flex-wrap items-center gap-2 bg-indigo-50/60 border border-indigo-100 px-3 py-2.5 rounded-xl">
+          <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+            <input id="chk-total-score" type="checkbox" checked class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" />
+            <span class="text-xs font-bold text-slate-800">目標合計点チェック</span>
+          </label>
+          <div id="score-input-wrapper" class="flex items-center gap-1.5 transition-opacity ml-auto">
+            <input id="input-target-score" type="number" value="100" min="1" max="1000" class="w-20 px-2.5 py-1 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-right font-bold text-indigo-700 bg-white" />
+            <span class="text-xs font-medium text-slate-600">点満点</span>
+          </div>
+        </div>
+
+        <!-- 誤字脱字・表記ゆれ・括弧チェック -->
+        <label class="flex items-center gap-2.5 bg-slate-50 border border-slate-200/80 px-3 py-2.5 rounded-xl cursor-pointer select-none hover:bg-slate-100/70 transition">
+          <input id="chk-typos" type="checkbox" checked class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" />
+          <span class="text-xs font-medium text-slate-700">誤字脱字・表記ゆれ・括弧閉じ忘れ</span>
+        </label>
+
+        <!-- 設問番号の連番・重複チェック -->
+        <label class="flex items-center gap-2.5 bg-slate-50 border border-slate-200/80 px-3 py-2.5 rounded-xl cursor-pointer select-none hover:bg-slate-100/70 transition">
+          <input id="chk-numbering" type="checkbox" checked class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" />
+          <span class="text-xs font-medium text-slate-700">設問番号の連番・重複・図表参照</span>
+        </label>
+
+        <!-- 問題用紙と解答用紙の整合性チェック -->
+        <label class="flex items-center gap-2.5 bg-slate-50 border border-slate-200/80 px-3 py-2.5 rounded-xl cursor-pointer select-none hover:bg-slate-100/70 transition">
+          <input id="chk-consistency" type="checkbox" checked class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" />
+          <span class="text-xs font-medium text-slate-700">問題・解答欄の整合性・選択肢・配点</span>
+        </label>
       </div>
     </section>
 
-    <!-- 入力エリア（左右2カラム） -->
+    <!-- 入力エリア（左右2カラム：行番号付きハイブリッドエディタ） -->
     <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       
       <!-- 左：問題用紙 -->
-      <div id="dropzone-question" class="bg-white rounded-xl border-2 border-slate-200 p-5 shadow-sm flex flex-col gap-4 transition">
+      <div id="dropzone-question" class="bg-white rounded-xl border-2 border-slate-200 p-5 shadow-sm flex flex-col gap-3.5 transition">
         <div class="flex items-center justify-between flex-wrap gap-2">
           <div class="flex items-center gap-2">
             <span class="px-2.5 py-1 rounded-lg bg-blue-100 text-blue-800 text-xs font-bold">問題用紙</span>
             <h2 class="font-bold text-slate-800">問題文のテキスト・画像</h2>
           </div>
-          <label class="cursor-pointer text-xs bg-blue-50 hover:bg-blue-100 active:bg-blue-200 text-blue-700 font-medium px-3 py-2 rounded-xl border border-blue-200 transition inline-flex items-center gap-1">
+          <label class="cursor-pointer text-xs bg-blue-50 hover:bg-blue-100 active:bg-blue-200 text-blue-700 font-medium px-3 py-2 rounded-xl border border-blue-200 transition inline-flex items-center gap-1.5">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
@@ -112,23 +151,27 @@
         </div>
 
         <p class="text-xs text-slate-500 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
-          テキスト貼り付け、画像のドラッグ＆ドロップ、または入力欄で <kbd class="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[11px] font-mono">Ctrl+V</kbd>（Macは <kbd class="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[11px] font-mono">Cmd+V</kbd>）で画像を直接貼り付けられます。
+          テキスト入力、画像ドラッグ＆ドロップ、またはこの枠内で <kbd class="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[11px] font-mono">Ctrl+V</kbd>（Macは <kbd class="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[11px] font-mono">Cmd+V</kbd>）で画像を直接貼り付けられます。
         </p>
 
-        <textarea id="text-question" rows="12" placeholder="ここに問題用紙のテキストを貼り付けるか、画像をドロップ／貼り付けしてください...&#10;例：&#10;【大問1】次の問いに答えなさい。（各5点）&#10;問1 地球の自転によって起こる現象を選びなさい。" class="w-full rounded-xl border border-slate-300 p-3.5 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"></textarea>
+        <!-- 行番号付きエディタ -->
+        <div class="relative flex rounded-xl border border-slate-300 overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 bg-white">
+          <div id="lines-question" aria-hidden="true" class="line-numbers select-none bg-slate-50 text-slate-400 text-right py-3.5 px-2.5 text-xs sm:text-sm leading-relaxed font-mono-editor border-r border-slate-200 overflow-y-hidden w-10 shrink-0">1</div>
+          <textarea id="text-question" rows="13" placeholder="ここに問題用紙のテキストを貼り付けるか、画像をドロップ／貼り付けしてください...&#10;例：&#10;【大問1】次の問いに答えなさい。（各5点）&#10;問1 地球の自転によって起こる現象を選びなさい。" class="w-full py-3.5 px-3 text-xs sm:text-sm leading-relaxed font-mono-editor focus:outline-none resize-y border-0"></textarea>
+        </div>
 
         <!-- 問題画像プレビュー -->
         <div id="preview-question" class="flex flex-wrap gap-3 empty:hidden"></div>
       </div>
 
       <!-- 右：解答用紙 -->
-      <div id="dropzone-answer" class="bg-white rounded-xl border-2 border-slate-200 p-5 shadow-sm flex flex-col gap-4 transition">
+      <div id="dropzone-answer" class="bg-white rounded-xl border-2 border-slate-200 p-5 shadow-sm flex flex-col gap-3.5 transition">
         <div class="flex items-center justify-between flex-wrap gap-2">
           <div class="flex items-center gap-2">
             <span class="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 text-xs font-bold">解答用紙</span>
             <h2 class="font-bold text-slate-800">解答欄のテキスト・画像</h2>
           </div>
-          <label class="cursor-pointer text-xs bg-emerald-50 hover:bg-emerald-100 active:bg-emerald-200 text-emerald-700 font-medium px-3 py-2 rounded-xl border border-emerald-200 transition inline-flex items-center gap-1">
+          <label class="cursor-pointer text-xs bg-emerald-50 hover:bg-emerald-100 active:bg-emerald-200 text-emerald-700 font-medium px-3 py-2 rounded-xl border border-emerald-200 transition inline-flex items-center gap-1.5">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
@@ -138,10 +181,14 @@
         </div>
 
         <p class="text-xs text-slate-500 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
-          テキスト貼り付け、画像のドラッグ＆ドロップ、または入力欄で <kbd class="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[11px] font-mono">Ctrl+V</kbd>（Macは <kbd class="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[11px] font-mono">Cmd+V</kbd>）で画像を直接貼り付けられます。
+          テキスト入力、画像ドラッグ＆ドロップ、またはこの枠内で <kbd class="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[11px] font-mono">Ctrl+V</kbd>（Macは <kbd class="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[11px] font-mono">Cmd+V</kbd>）で画像を直接貼り付けられます。
         </p>
 
-        <textarea id="text-answer" rows="12" placeholder="ここに解答用紙のテキストを貼り付けるか、画像をドロップ／貼り付けしてください...&#10;例：&#10;【大問1】&#10;問1 [ ア ・ イ ・ ウ ・ エ ] （5点）" class="w-full rounded-xl border border-slate-300 p-3.5 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y"></textarea>
+        <!-- 行番号付きエディタ -->
+        <div class="relative flex rounded-xl border border-slate-300 overflow-hidden focus-within:ring-2 focus-within:ring-emerald-500 bg-white">
+          <div id="lines-answer" aria-hidden="true" class="line-numbers select-none bg-slate-50 text-slate-400 text-right py-3.5 px-2.5 text-xs sm:text-sm leading-relaxed font-mono-editor border-r border-slate-200 overflow-y-hidden w-10 shrink-0">1</div>
+          <textarea id="text-answer" rows="13" placeholder="ここに解答用紙のテキストを貼り付けるか、画像をドロップ／貼り付けしてください...&#10;例：&#10;【大問1】&#10;問1 [ ア ・ イ ・ ウ ・ エ ] （5点）" class="w-full py-3.5 px-3 text-xs sm:text-sm leading-relaxed font-mono-editor focus:outline-none resize-y border-0"></textarea>
+        </div>
 
         <!-- 解答画像プレビュー -->
         <div id="preview-answer" class="flex flex-wrap gap-3 empty:hidden"></div>
@@ -151,7 +198,7 @@
 
     <!-- チェック実行ボタン -->
     <div class="flex justify-center">
-      <button id="btn-run-check" type="button" class="w-full sm:w-auto min-w-[300px] bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:bg-slate-400 disabled:cursor-not-allowed text-white font-bold text-base px-8 py-4 rounded-xl shadow-md hover:shadow-lg transition flex items-center justify-center gap-2">
+      <button id="btn-run-check" type="button" class="w-full sm:w-auto min-w-[320px] bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:bg-slate-400 disabled:cursor-not-allowed text-white font-bold text-base px-8 py-4 rounded-xl shadow-md hover:shadow-lg transition flex items-center justify-center gap-2.5">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
@@ -170,9 +217,28 @@
     <!-- 結果表示エリア -->
     <section id="result-section" class="hidden space-y-6">
       <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4">
-        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-4">
-          <h3 class="text-lg font-bold text-slate-900">校正・チェック結果レポート</h3>
-          <div id="summary-badges" class="flex flex-wrap gap-2"></div>
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
+          <div class="flex flex-wrap items-center gap-3">
+            <h3 class="text-lg font-bold text-slate-900">校正・チェック結果レポート</h3>
+            <div id="summary-badges" class="flex flex-wrap gap-2"></div>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <!-- フィルターボタン -->
+            <div class="inline-flex rounded-xl bg-slate-100 p-1 text-xs font-medium" role="group">
+              <button type="button" data-filter="all" class="filter-btn px-3 py-1.5 rounded-lg bg-white text-slate-900 shadow-sm transition">すべて</button>
+              <button type="button" data-filter="error" class="filter-btn px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition">要修正のみ</button>
+              <button type="button" data-filter="warn" class="filter-btn px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition">確認推奨のみ</button>
+            </div>
+
+            <!-- レポートコピーボタン -->
+            <button id="btn-copy-report" type="button" class="text-xs bg-indigo-50 hover:bg-indigo-100 active:bg-indigo-200 text-indigo-700 border border-indigo-200 font-bold px-3.5 py-2 rounded-xl transition inline-flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+              </svg>
+              <span>レポートをコピー</span>
+            </button>
+          </div>
         </div>
 
         <div id="issues-list" class="space-y-3"></div>
@@ -180,7 +246,10 @@
 
       <!-- 設問対比テーブル -->
       <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4">
-        <h3 class="text-base font-bold text-slate-900">問題用紙 vs 解答用紙 設問対応表</h3>
+        <div class="flex items-center justify-between">
+          <h3 class="text-base font-bold text-slate-900">問題用紙 vs 解答用紙 設問対応表</h3>
+          <span class="text-xs text-slate-400">各設問の形式・選択肢・配点を左右で対比します</span>
+        </div>
         <div class="overflow-x-auto">
           <table class="w-full text-sm text-left border-collapse">
             <thead>
@@ -215,6 +284,19 @@
     <p>&copy; 2026 TEST-TEST. All rights reserved.</p>
   </footer>
 
+  <!-- 画像拡大プレビューモーダル -->
+  <div id="image-modal" class="fixed inset-0 z-50 hidden bg-slate-900/80 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
+      <div class="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between">
+        <h4 id="modal-image-title" class="text-sm font-bold text-slate-800 truncate">画像プレビュー</h4>
+        <button id="btn-close-modal" type="button" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-bold transition">&times;</button>
+      </div>
+      <div class="p-4 overflow-auto flex-1 flex items-center justify-center bg-slate-100">
+        <img id="modal-image-src" src="" alt="拡大画像" class="max-w-full max-h-[72vh] object-contain rounded-lg shadow" />
+      </div>
+    </div>
+  </div>
+
   <!-- トースト通知（alertの代替） -->
   <div id="toast" class="fixed bottom-5 right-5 z-50 hidden bg-slate-900 text-white text-sm px-4 py-3 rounded-xl shadow-lg transition-opacity duration-300 max-w-sm"></div>
 
@@ -225,12 +307,16 @@
     const state = {
       questionImages: [],
       answerImages: [],
-      lastFocusedTarget: 'question'
+      lastFocusedTarget: 'question',
+      latestIssues: [],
+      currentFilter: 'all'
     };
 
     const el = {
       textQ: document.getElementById('text-question'),
       textA: document.getElementById('text-answer'),
+      linesQ: document.getElementById('lines-question'),
+      linesA: document.getElementById('lines-answer'),
       fileQ: document.getElementById('file-question'),
       fileA: document.getElementById('file-answer'),
       previewQ: document.getElementById('preview-question'),
@@ -240,9 +326,15 @@
       chkScore: document.getElementById('chk-total-score'),
       scoreWrapper: document.getElementById('score-input-wrapper'),
       inputScore: document.getElementById('input-target-score'),
+      chkTypos: document.getElementById('chk-typos'),
+      chkNumbering: document.getElementById('chk-numbering'),
+      chkConsistency: document.getElementById('chk-consistency'),
+      liveStats: document.getElementById('live-stats'),
       btnCheck: document.getElementById('btn-run-check'),
+      btnGenSampleImg: document.getElementById('btn-gen-sample-img'),
       btnSample: document.getElementById('btn-load-sample'),
       btnClear: document.getElementById('btn-clear-all'),
+      btnCopyReport: document.getElementById('btn-copy-report'),
       progressBox: document.getElementById('progress-box'),
       progressText: document.getElementById('progress-text'),
       progressBar: document.getElementById('progress-bar'),
@@ -250,11 +342,15 @@
       summaryBadges: document.getElementById('summary-badges'),
       issuesList: document.getElementById('issues-list'),
       comparisonTbody: document.getElementById('comparison-tbody'),
+      imageModal: document.getElementById('image-modal'),
+      modalImageTitle: document.getElementById('modal-image-title'),
+      modalImageSrc: document.getElementById('modal-image-src'),
+      btnCloseModal: document.getElementById('btn-close-modal'),
       toast: document.getElementById('toast')
     };
 
     // ==========================================
-    // トースト通知表示関数
+    // トースト通知・エスケープ処理
     // ==========================================
     function showToast(msg) {
       if (!el.toast) return;
@@ -266,7 +362,6 @@
       }, 3500);
     }
 
-    // HTMLエスケープ処理（XSS対策）
     function escapeHtml(str) {
       if (!str) return '';
       return String(str)
@@ -278,12 +373,63 @@
     }
 
     // ==========================================
+    // 行番号同期＆リアルタイム統計カウンター
+    // ==========================================
+    function updateEditorUI() {
+      [
+        { textarea: el.textQ, gutter: el.linesQ },
+        { textarea: el.textA, gutter: el.linesA }
+      ].forEach(({ textarea, gutter }) => {
+        const lineCount = Math.max(1, textarea.value.split('\n').length);
+        let nums = '';
+        for (let i = 1; i <= lineCount; i++) {
+          nums += i + '\n';
+        }
+        gutter.textContent = nums.trimEnd();
+        gutter.scrollTop = textarea.scrollTop;
+      });
+
+      const qChars = el.textQ.value.length;
+      const qLines = el.textQ.value ? el.textQ.value.split('\n').length : 0;
+      const qImgs = state.questionImages.length;
+
+      const aChars = el.textA.value.length;
+      const aLines = el.textA.value ? el.textA.value.split('\n').length : 0;
+      const aImgs = state.answerImages.length;
+
+      el.liveStats.textContent = `問題用紙: ${qChars}文字 / ${qLines}行 / 画像${qImgs}枚 ｜ 解答用紙: ${aChars}文字 / ${aLines}行 / 画像${aImgs}枚`;
+    }
+
+    el.textQ.addEventListener('input', updateEditorUI);
+    el.textA.addEventListener('input', updateEditorUI);
+    el.textQ.addEventListener('scroll', () => { el.linesQ.scrollTop = el.textQ.scrollTop; });
+    el.textA.addEventListener('scroll', () => { el.linesA.scrollTop = el.textA.scrollTop; });
+
+    // ==========================================
     // 合計点チェックのON/OFF切り替え
     // ==========================================
     el.chkScore.addEventListener('change', () => {
       const enabled = el.chkScore.checked;
       el.inputScore.disabled = !enabled;
       el.scoreWrapper.classList.toggle('opacity-40', !enabled);
+    });
+
+    // ==========================================
+    // 画像拡大モーダル制御
+    // ==========================================
+    function openImageModal(title, dataUrl) {
+      el.modalImageTitle.textContent = title;
+      el.modalImageSrc.src = dataUrl;
+      el.imageModal.classList.remove('hidden');
+    }
+
+    el.btnCloseModal.addEventListener('click', () => {
+      el.imageModal.classList.add('hidden');
+    });
+    el.imageModal.addEventListener('click', (e) => {
+      if (e.target === el.imageModal) {
+        el.imageModal.classList.add('hidden');
+      }
     });
 
     // ==========================================
@@ -308,6 +454,7 @@
           loaded++;
           if (loaded === validFiles.length) {
             renderPreviews(target);
+            updateEditorUI();
             showToast(`${target === 'question' ? '問題用紙' : '解答用紙'}に画像を ${validFiles.length} 枚追加しました`);
           }
         };
@@ -318,19 +465,26 @@
     function renderPreviews(target) {
       const list = target === 'question' ? state.questionImages : state.answerImages;
       const container = target === 'question' ? el.previewQ : el.previewA;
+      const label = target === 'question' ? '問題用紙' : '解答用紙';
       container.innerHTML = '';
 
       list.forEach((img, idx) => {
         const div = document.createElement('div');
-        div.className = 'relative group w-24 h-24 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 shadow-sm';
+        div.className = 'relative group w-24 h-24 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 shadow-sm cursor-pointer';
         div.innerHTML = `
-          <img src="${img.dataUrl}" alt="${escapeHtml(img.name)}" class="w-full h-full object-cover" />
-          <span class="absolute bottom-0 inset-x-0 bg-slate-900/70 text-white text-[10px] px-1.5 py-0.5 truncate">${idx + 1}枚目</span>
-          <button type="button" class="absolute top-1 right-1 bg-rose-600 hover:bg-rose-700 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center shadow" title="削除">&times;</button>
+          <img src="${img.dataUrl}" alt="${escapeHtml(img.name)}" class="w-full h-full object-cover group-hover:scale-105 transition" />
+          <span class="absolute bottom-0 inset-x-0 bg-slate-900/75 text-white text-[10px] px-1.5 py-0.5 truncate">${idx + 1}枚目 (拡大)</span>
+          <button type="button" class="delete-img-btn absolute top-1 right-1 bg-rose-600 hover:bg-rose-700 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center shadow" title="削除">&times;</button>
         `;
-        div.querySelector('button').addEventListener('click', () => {
+        div.addEventListener('click', (e) => {
+          if (e.target.closest('.delete-img-btn')) return;
+          openImageModal(`${label} - ${idx + 1}枚目 (${img.name})`, img.dataUrl);
+        });
+        div.querySelector('.delete-img-btn').addEventListener('click', (e) => {
+          e.stopPropagation();
           list.splice(idx, 1);
           renderPreviews(target);
+          updateEditorUI();
           showToast('画像を削除しました');
         });
         container.appendChild(div);
@@ -349,7 +503,7 @@
     el.textQ.addEventListener('focus', () => { state.lastFocusedTarget = 'question'; });
     el.textA.addEventListener('focus', () => { state.lastFocusedTarget = 'answer'; });
 
-    // ドラッグ＆ドロップおよびエリア内ペースト対応
+    // ドラッグ＆ドロップ対応
     [
       { zone: el.dropQ, target: 'question' },
       { zone: el.dropA, target: 'answer' }
@@ -371,7 +525,7 @@
       });
     });
 
-    // ページ全体のクリップボード画像貼り付け（Ctrl+V / Cmd+V）対応
+    // クリップボード画像貼り付け（Ctrl+V / Cmd+V）対応
     document.addEventListener('paste', (e) => {
       const items = e.clipboardData?.items;
       if (!items) return;
@@ -393,14 +547,88 @@
     });
 
     // ==========================================
-    // サンプルデータ読み込み＆クリア機能
+    // Canvas APIによるテストサンプル画像（ミスあり）自動生成
+    // ==========================================
+    function renderSheetCanvas(title, lines) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 900;
+      canvas.height = 560;
+      const ctx = canvas.getContext('2d');
+
+      // 背景と外枠
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(24, 24, canvas.width - 48, canvas.height - 48);
+
+      // タイトルヘッダー
+      ctx.fillStyle = '#0f172a';
+      ctx.font = 'bold 28px "Noto Sans JP", sans-serif';
+      ctx.fillText(title, 50, 75);
+
+      ctx.beginPath();
+      ctx.moveTo(45, 95);
+      ctx.lineTo(canvas.width - 45, 95);
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // 本文描画
+      ctx.font = '22px "Noto Sans JP", sans-serif';
+      ctx.fillStyle = '#1e293b';
+      let y = 140;
+      lines.forEach(line => {
+        ctx.fillText(line, 52, y);
+        y += 42;
+      });
+
+      return canvas.toDataURL('image/png');
+    }
+
+    el.btnGenSampleImg.addEventListener('click', () => {
+      const qDataUrl = renderSheetCanvas('【問題用紙】 理科・社会 確認テスト（100点満点）', [
+        '【大問1】 次の問いに答えなさい。（各10点）',
+        '問1 地球の自転によって起こる現象を次ぎから1つ選らびなさい。',
+        '    ア 季節の変化   イ 昼夜の交代   ウ 星座の年周運動   エ 満ち欠け',
+        '問2 光合成が行われる細胞内のつくりを答えなさい。',
+        '問4 酸性の水溶液にBTB溶液を加えたときの色を答えなさい。（10点）',
+        '',
+        '【大問2】 日本の地理について答えなさい。',
+        '問1 日本で最も面積が大きい都道府県を答えななさい。（20点）',
+        '問2 政令指定都市でないものを1つ選びなさい。（20点）'
+      ]);
+
+      const aDataUrl = renderSheetCanvas('【回答用紙】 理科・社会 確認テスト', [
+        '【大問1】',
+        '問1  [ ア ・ イ ・ ウ ・ エ ・ オ ] （10点）',
+        '問2  [                    ] （10点）',
+        '問3  [                    ] （10点）',
+        '',
+        '【大問2】',
+        '問1  [                    ] （20点）',
+        '問2  [ ア ・ イ ・ ウ ・ エ ] （25点）'
+      ]);
+
+      state.questionImages = [{ name: 'sample-question.png', dataUrl: qDataUrl }];
+      state.answerImages = [{ name: 'sample-answer.png', dataUrl: aDataUrl }];
+      el.textQ.value = '';
+      el.textA.value = '';
+      renderPreviews('question');
+      renderPreviews('answer');
+      updateEditorUI();
+      showToast('ミス入りのテスト画像（問題・解答用紙）を生成してセットしました！');
+    });
+
+    // ==========================================
+    // サンプルテキスト読み込み＆クリア機能
     // ==========================================
     el.btnSample.addEventListener('click', () => {
       el.textQ.value = `【大問1】次の問いに答えなさい。（各5点）
 問1 地球の自転によって起こる現象を次ぎから1つ選らびなさい。
 ア 季節の変化　イ 昼夜の交代　ウ 星座の年周運動　エ 満ち欠け
 
-問2 光合成が行われる細胞内のつくりを答えなさい。（5点
+問2 光合成が行われる細胞内のつくりを図1を参考に答えなさい。（5点
 
 問4 酸性の水溶液にBTB溶液を加えたときの色を答えなさい。（5点）
 
@@ -423,7 +651,8 @@
       el.inputScore.disabled = false;
       el.scoreWrapper.classList.remove('opacity-40');
       el.inputScore.value = 100;
-      showToast('ミス・不整合入りのサンプルデータを読み込みました');
+      updateEditorUI();
+      showToast('ミス・不整合入りのサンプルテキストを読み込みました');
     });
 
     el.btnClear.addEventListener('click', () => {
@@ -433,6 +662,7 @@
       state.answerImages = [];
       renderPreviews('question');
       renderPreviews('answer');
+      updateEditorUI();
       el.resultSection.classList.add('hidden');
       showToast('入力内容をすべてクリアしました');
     });
@@ -539,73 +769,94 @@
 
         const issues = [];
 
-        // 1. 誤字・表記ゆれチェック
-        const typoRules = [
-          { pattern: /選らび/g, msg: '誤字：「選らび」→「選び」に修正してください。' },
-          { pattern: /次ぎ/g, msg: '誤字：「次ぎ」→「次」に修正してください。' },
-          { pattern: /ななさい/g, msg: '文字重複：「〜ななさい」→「〜なさい」に修正してください。' },
-          { pattern: /答えななさい/g, msg: '誤字：「答えななさい」→「答えなさい」に修正してください。' },
-          { pattern: /回答用紙/g, msg: '表記ゆれ：テストの解答記入欄を指す場合は「解答用紙」への統一を推奨します。' }
-        ];
+        // 1. 誤字・表記ゆれ・括弧閉じ忘れチェック
+        if (el.chkTypos.checked) {
+          const typoRules = [
+            { pattern: /選らび/g, msg: '誤字：「選らび」→「選び」に修正してください。' },
+            { pattern: /次ぎ/g, msg: '誤字：「次ぎ」→「次」に修正してください。' },
+            { pattern: /ななさい/g, msg: '文字重複：「〜ななさい」→「〜なさい」に修正してください。' },
+            { pattern: /答えななさい/g, msg: '誤字：「答えななさい」→「答えなさい」に修正してください。' },
+            { pattern: /回答用紙/g, msg: '表記ゆれ：テストの解答記入欄を指す場合は「解答用紙」への統一を推奨します。' }
+          ];
 
-        typoRules.forEach(rule => {
-          if (rule.pattern.test(fullQ)) {
-            issues.push({ level: 'error', category: '問題文の誤字・表記', detail: rule.msg });
-          }
-          rule.pattern.lastIndex = 0;
-          if (rule.pattern.test(fullA)) {
-            issues.push({ level: 'warn', category: '解答用紙の表記', detail: rule.msg });
-          }
-          rule.pattern.lastIndex = 0;
-        });
+          typoRules.forEach(rule => {
+            if (rule.pattern.test(fullQ)) {
+              issues.push({ level: 'error', category: '問題文の誤字・表記', detail: rule.msg });
+            }
+            rule.pattern.lastIndex = 0;
+            if (rule.pattern.test(fullA)) {
+              issues.push({ level: 'warn', category: '解答用紙の表記', detail: rule.msg });
+            }
+            rule.pattern.lastIndex = 0;
+          });
 
-        // 括弧の閉じ忘れチェック（問題用紙・解答用紙それぞれ）
-        [
-          { label: '問題用紙', text: fullQ },
-          { label: '解答用紙', text: fullA }
-        ].forEach(sheet => {
-          if (!sheet.text) return;
-          const openParens = (sheet.text.match(/（|\(/g) || []).length;
-          const closeParens = (sheet.text.match(/）|\)/g) || []).length;
-          if (openParens !== closeParens) {
-            issues.push({
-              level: 'error',
-              category: `書式・括弧ミス（${sheet.label}）`,
-              detail: `${sheet.label}の丸括弧の数が一致していません（開き括弧: ${openParens}個 / 閉じ括弧: ${closeParens}個）。`
-            });
-          }
-        });
+          // 括弧の閉じ忘れチェック（問題用紙・解答用紙それぞれ）
+          [
+            { label: '問題用紙', text: fullQ },
+            { label: '解答用紙', text: fullA }
+          ].forEach(sheet => {
+            if (!sheet.text) return;
+            const openParens = (sheet.text.match(/（|\(/g) || []).length;
+            const closeParens = (sheet.text.match(/）|\)/g) || []).length;
+            if (openParens !== closeParens) {
+              issues.push({
+                level: 'error',
+                category: `書式・括弧ミス（${sheet.label}）`,
+                detail: `${sheet.label}の丸括弧の数が一致していません（開き括弧: ${openParens}個 / 閉じ括弧: ${closeParens}個）。`
+              });
+            }
+          });
+        }
 
-        // 2. 設問パースと大問ごとの連番・重複チェック
+        // 2. 設問パースと大問ごとの連番・重複・図表参照チェック
         const qItems = parseQuestionsFromText(fullQ);
         const aItems = parseQuestionsFromText(fullA);
 
-        const sections = [...new Set([...qItems.map(i => i.section), ...aItems.map(i => i.section)])];
-        sections.forEach(sec => {
-          const secQs = qItems.filter(i => i.section === sec);
-          const seen = new Set();
-          let expected = 1;
-          secQs.forEach(item => {
-            if (seen.has(item.num)) {
+        if (el.chkNumbering.checked) {
+          const sections = [...new Set([...qItems.map(i => i.section), ...aItems.map(i => i.section)])];
+          sections.forEach(sec => {
+            const secQs = qItems.filter(i => i.section === sec);
+            const seen = new Set();
+            let expected = 1;
+            secQs.forEach(item => {
+              if (seen.has(item.num)) {
+                issues.push({
+                  level: 'error',
+                  category: '設問番号の重複',
+                  detail: `問題用紙の「${sec} 問${item.num}」が重複しています。`
+                });
+              }
+              seen.add(item.num);
+              if (item.num !== expected) {
+                issues.push({
+                  level: 'error',
+                  category: '設問番号の抜け・飛び',
+                  detail: `問題用紙の「${sec}」で設問番号が飛んでいます（問${expected}の代わりに問${item.num}が出現）。`
+                });
+                expected = item.num + 1;
+              } else {
+                expected++;
+              }
+            });
+          });
+
+          // 図・表の参照整合性チェック（「図1」「表1」などが1回しか出現しない＝見出しや図本体がない可能性）
+          const figMatches = fullQ.match(/(?:図|表)\s*[0-9０-９]+/g) || [];
+          const figCounts = {};
+          figMatches.forEach(m => {
+            const norm = toHalfWidthNum(m.replace(/\s+/g, ''));
+            figCounts[norm] = (figCounts[norm] || 0) + 1;
+          });
+          Object.entries(figCounts).forEach(([figName, count]) => {
+            if (count === 1) {
               issues.push({
-                level: 'error',
-                category: '設問番号の重複',
-                detail: `問題用紙の「${sec} 問${item.num}」が重複しています。`
+                level: 'warn',
+                category: '図・表番号の参照確認',
+                detail: `問題文中に「${figName}」が1回だけ登場しています。図表本体やキャプションの記載漏れ、または番号の誤りがないか確認してください。`
               });
-            }
-            seen.add(item.num);
-            if (item.num !== expected) {
-              issues.push({
-                level: 'error',
-                category: '設問番号の抜け・飛び',
-                detail: `問題用紙の「${sec}」で設問番号が飛んでいます（問${expected}の代わりに問${item.num}が出現）。`
-              });
-              expected = item.num + 1;
-            } else {
-              expected++;
             }
           });
-        });
+        }
 
         // 3. 問題用紙と解答用紙の照合
         const allKeys = [...new Set([...qItems.map(i => i.key), ...aItems.map(i => i.key)])];
@@ -617,42 +868,44 @@
 
           let statusHtml = '<span class="px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-xs font-bold">OK</span>';
 
-          if (q && !a) {
-            issues.push({
-              level: 'error',
-              category: '解答欄の欠落',
-              detail: `問題用紙にある「${key}」の解答欄が解答用紙に見当たりません。`
-            });
-            statusHtml = '<span class="px-2.5 py-0.5 rounded-md bg-rose-100 text-rose-800 text-xs font-bold">解答欄なし</span>';
-          } else if (!q && a) {
-            issues.push({
-              level: 'error',
-              category: '不要な解答欄',
-              detail: `解答用紙にある「${key}」に対応する問題文が問題用紙に見当たりません。`
-            });
-            statusHtml = '<span class="px-2.5 py-0.5 rounded-md bg-rose-100 text-rose-800 text-xs font-bold">問題なし</span>';
-          } else if (q && a) {
-            // 選択肢の比較
-            if (q.choices.length > 0 || a.choices.length > 0) {
-              const qCh = q.choices.join('・');
-              const aCh = a.choices.join('・');
-              if (qCh !== aCh) {
-                issues.push({
-                  level: 'error',
-                  category: '選択肢のずれ',
-                  detail: `「${key}」の選択肢が一致しません（問題用紙: [${qCh || 'なし'}] / 解答用紙: [${aCh || 'なし'}]）。`
-                });
-                statusHtml = '<span class="px-2.5 py-0.5 rounded-md bg-amber-100 text-amber-800 text-xs font-bold">選択肢ずれ</span>';
-              }
-            }
-            // 配点の比較
-            if (q.points !== null && a.points !== null && q.points !== a.points) {
+          if (el.chkConsistency.checked) {
+            if (q && !a) {
               issues.push({
-                level: 'warn',
-                category: '配点の不一致',
-                detail: `「${key}」の配点が問題用紙（${q.points}点）と解答用紙（${a.points}点）で異なります。`
+                level: 'error',
+                category: '解答欄の欠落',
+                detail: `問題用紙にある「${key}」の解答欄が解答用紙に見当たりません。`
               });
-              statusHtml = '<span class="px-2.5 py-0.5 rounded-md bg-amber-100 text-amber-800 text-xs font-bold">配点不一致</span>';
+              statusHtml = '<span class="px-2.5 py-0.5 rounded-md bg-rose-100 text-rose-800 text-xs font-bold">解答欄なし</span>';
+            } else if (!q && a) {
+              issues.push({
+                level: 'error',
+                category: '不要な解答欄',
+                detail: `解答用紙にある「${key}」に対応する問題文が問題用紙に見当たりません。`
+              });
+              statusHtml = '<span class="px-2.5 py-0.5 rounded-md bg-rose-100 text-rose-800 text-xs font-bold">問題なし</span>';
+            } else if (q && a) {
+              // 選択肢の比較
+              if (q.choices.length > 0 || a.choices.length > 0) {
+                const qCh = q.choices.join('・');
+                const aCh = a.choices.join('・');
+                if (qCh !== aCh) {
+                  issues.push({
+                    level: 'error',
+                    category: '選択肢のずれ',
+                    detail: `「${key}」の選択肢が一致しません（問題用紙: [${qCh || 'なし'}] / 解答用紙: [${aCh || 'なし'}]）。`
+                  });
+                  statusHtml = '<span class="px-2.5 py-0.5 rounded-md bg-amber-100 text-amber-800 text-xs font-bold">選択肢ずれ</span>';
+                }
+              }
+              // 配点の比較
+              if (q.points !== null && a.points !== null && q.points !== a.points) {
+                issues.push({
+                  level: 'warn',
+                  category: '配点の不一致',
+                  detail: `「${key}」の配点が問題用紙（${q.points}点）と解答用紙（${a.points}点）で異なります。`
+                });
+                statusHtml = '<span class="px-2.5 py-0.5 rounded-md bg-amber-100 text-amber-800 text-xs font-bold">配点不一致</span>';
+              }
             }
           }
 
@@ -669,6 +922,15 @@
           const targetTotal = parseInt(el.inputScore.value, 10) || 100;
           const sumQ = qItems.reduce((acc, cur) => acc + (cur.points || 0), 0);
           const sumA = aItems.reduce((acc, cur) => acc + (cur.points || 0), 0);
+          const missingPtQ = qItems.filter(i => i.points === null);
+
+          if (missingPtQ.length > 0) {
+            issues.push({
+              level: 'warn',
+              category: '配点未記載の設問',
+              detail: `問題用紙の ${missingPtQ.map(i => i.key).join('、')} に配点の記載が見つかりませんでした。`
+            });
+          }
 
           if (qItems.length > 0 && sumQ !== targetTotal) {
             const diff = targetTotal - sumQ;
@@ -688,6 +950,9 @@
           }
         }
 
+        state.latestIssues = issues;
+        state.currentFilter = 'all';
+        updateFilterButtons();
         renderResults(issues, compRows);
         el.progressBar.style.width = '100%';
         showToast('校正・整合性チェックが完了しました');
@@ -703,18 +968,62 @@
     });
 
     // ==========================================
+    // フィルター切り替え＆レポートコピー機能
+    // ==========================================
+    function updateFilterButtons() {
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        const isActive = btn.dataset.filter === state.currentFilter;
+        btn.classList.toggle('bg-white', isActive);
+        btn.classList.toggle('text-slate-900', isActive);
+        btn.classList.toggle('shadow-sm', isActive);
+        btn.classList.toggle('text-slate-600', !isActive);
+      });
+    }
+
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.currentFilter = btn.dataset.filter;
+        updateFilterButtons();
+        renderIssuesList(state.latestIssues);
+      });
+    });
+
+    el.btnCopyReport.addEventListener('click', () => {
+      if (!state.latestIssues.length) {
+        showToast('コピーする指摘事項がありません（問題なし）');
+        return;
+      }
+      const lines = ['【TEST-TEST. 校正・整合性チェック結果レポート】', ''];
+      state.latestIssues.forEach((issue, idx) => {
+        const tag = issue.level === 'error' ? '[要修正]' : '[確認推奨]';
+        lines.push(`${idx + 1}. ${tag} ${issue.category}: ${issue.detail}`);
+      });
+      const reportText = lines.join('\n');
+
+      const textarea = document.createElement('textarea');
+      textarea.value = reportText;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        document.execCommand('copy');
+        showToast('校正レポートをクリップボードにコピーしました！');
+      } catch (e) {
+        showToast('コピーに失敗しました');
+      } finally {
+        document.body.removeChild(textarea);
+      }
+    });
+
+    // ==========================================
     // 結果レポートの描画処理
     // ==========================================
-    function renderResults(issues, compRows) {
-      el.resultSection.classList.remove('hidden');
-
-      const errorCount = issues.filter(i => i.level === 'error').length;
-      const warnCount = issues.filter(i => i.level === 'warn').length;
-
-      el.summaryBadges.innerHTML = `
-        <span class="px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800">要修正: ${errorCount}件</span>
-        <span class="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800">確認推奨: ${warnCount}件</span>
-      `;
+    function renderIssuesList(issues) {
+      const filtered = issues.filter(i => {
+        if (state.currentFilter === 'all') return true;
+        return i.level === state.currentFilter;
+      });
 
       if (issues.length === 0) {
         el.issuesList.innerHTML = `
@@ -722,8 +1031,14 @@
             問題は見つかりませんでした！問題用紙と解答用紙の整合性は取れています。
           </div>
         `;
+      } else if (filtered.length === 0) {
+        el.issuesList.innerHTML = `
+          <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 text-sm text-center">
+            選択中のフィルター条件に一致する指摘事項はありません。
+          </div>
+        `;
       } else {
-        el.issuesList.innerHTML = issues.map(issue => {
+        el.issuesList.innerHTML = filtered.map(issue => {
           const isErr = issue.level === 'error';
           return `
             <div class="p-4 rounded-xl border ${isErr ? 'bg-rose-50 border-rose-200' : 'bg-amber-50 border-amber-200'} flex items-start gap-3">
@@ -738,6 +1053,20 @@
           `;
         }).join('');
       }
+    }
+
+    function renderResults(issues, compRows) {
+      el.resultSection.classList.remove('hidden');
+
+      const errorCount = issues.filter(i => i.level === 'error').length;
+      const warnCount = issues.filter(i => i.level === 'warn').length;
+
+      el.summaryBadges.innerHTML = `
+        <span class="px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800">要修正: ${errorCount}件</span>
+        <span class="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800">確認推奨: ${warnCount}件</span>
+      `;
+
+      renderIssuesList(issues);
 
       if (compRows.length === 0) {
         el.comparisonTbody.innerHTML = `
@@ -758,6 +1087,9 @@
 
       el.resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
+
+    // 初期UI状態更新
+    updateEditorUI();
   </script>
 </body>
 </html>

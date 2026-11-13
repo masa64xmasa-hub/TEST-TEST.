@@ -1,1524 +1,763 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TEST-TEST. - テスト問題・解答用紙 校正チェッカー</title>
-    <meta name="description" content="問題用紙と解答用紙のテキストや画像から、誤字脱字、設問番号のずれ、解答欄との不整合、配点ミスを自動検出するAI校正チェッカー「TEST-TEST.」">
-    <!-- Google Search Console 所有権確認タグ -->
-    <meta name="google-site-verification" content="QhLNJgeOPT-K4C-i7DbE3EmxKR7iFTtqJZnZqYCQk6s" />
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fonts: Noto Sans JP -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
-    <!-- Tesseract.js (ブラウザ内OCRエンジン: APIキー不要で画像から日本語テキストを抽出) -->
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-    <style>
-        body {
-            font-family: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: #f8fafc;
-            color: #1e293b;
-        }
-        /* カスタムスクロールバー */
-        textarea::-webkit-scrollbar, .custom-scroll::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-        textarea::-webkit-scrollbar-track, .custom-scroll::-webkit-scrollbar-track {
-            background: #f1f5f9;
-            border-radius: 4px;
-        }
-        textarea::-webkit-scrollbar-thumb, .custom-scroll::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 4px;
-        }
-        textarea::-webkit-scrollbar-thumb:hover, .custom-scroll::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-        }
-        .line-num-gutter {
-            user-select: none;
-            text-align: right;
-            color: #94a3b8;
-            background-color: #f1f5f9;
-            border-right: 1px solid #e2e8f0;
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-            font-size: 0.875rem;
-            line-height: 1.625rem;
-            padding: 0.75rem 0.5rem;
-        }
-        .code-textarea {
-            font-family: 'Noto Sans JP', sans-serif;
-            font-size: 0.875rem;
-            line-height: 1.625rem;
-            padding: 0.75rem;
-            resize: none;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TEST-TEST. | テスト問題・解答用紙 校正チェッカー</title>
+  <meta name="description" content="テストの問題用紙と解答用紙のテキストや画像を貼り付けるだけで、誤字脱字、設問番号の抜け、選択肢のずれ、配点の過不足を自動チェックする無料校正ツール「TEST-TEST.」です。" />
+  <meta name="google-site-verification" content="QhLNJgeOPT-K4C-i7DbE3EmxKR7iFTtqJZnZqYCQk6s" />
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Tesseract.js v5 CDN (ブラウザ内日本語・英語OCR) -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <!-- Google Fonts: Noto Sans JP -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: #f8fafc;
+    }
+    .drag-over {
+      border-color: #3b82f6 !important;
+      background-color: #eff6ff !important;
+    }
+    /* 広告枠のレスポンシブ横スクロール用カスタムスクロールバー */
+    .ad-scroll::-webkit-scrollbar {
+      height: 4px;
+    }
+    .ad-scroll::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+  </style>
 </head>
-<body class="min-h-screen flex flex-col">
+<body class="text-slate-800 min-h-screen flex flex-col">
 
-    <!-- ヘッダー -->
-    <header class="bg-gradient-to-r from-slate-800 via-blue-900 to-slate-800 text-white shadow-md">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div class="flex items-start sm:items-center gap-3">
-                    <div class="p-2.5 bg-blue-500/20 border border-blue-400/30 rounded-xl shrink-0">
-                        <!-- アイコン: 校正・チェック -->
-                        <svg class="w-8 h-8 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                    </div>
-                    <div>
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <h1 class="text-xl sm:text-2xl font-bold tracking-tight">TEST-TEST.</h1>
-                            <span class="px-2.5 py-0.5 text-xs font-medium bg-emerald-500/30 text-emerald-200 border border-emerald-400/30 rounded-full">APIキー不要・画像OCR＆テキスト校正対応</span>
-                        </div>
-                        <p class="text-slate-300 text-sm mt-1">
-                            問題用紙と解答用紙のテキストや画像から、誤字・表記ゆれ、設問番号のずれ、解答欄との不整合を自動検出します。
-                        </p>
-                    </div>
-                </div>
-                <div class="flex flex-wrap items-center gap-2 shrink-0">
-                    <button id="toggleApiKeyBtn" type="button" class="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-700/70 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-xl border border-slate-600 transition shadow-sm" title="任意でGemini APIキーを設定できます">
-                        <svg class="w-3.5 h-3.5 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                        </svg>
-                        <span>AI設定</span>
-                    </button>
-                    <button id="loadSampleBtn" type="button" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-white/10 hover:bg-white/20 active:bg-white/25 text-white text-xs sm:text-sm font-medium rounded-xl border border-white/20 transition shadow-sm">
-                        <svg class="w-4 h-4 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        <span>サンプルテキスト</span>
-                    </button>
-                    <button id="loadSampleImageBtn" type="button" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-indigo-500/30 hover:bg-indigo-500/40 active:bg-indigo-500/50 text-white text-xs sm:text-sm font-medium rounded-xl border border-indigo-300/40 transition shadow-sm">
-                        <svg class="w-4 h-4 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        <span>サンプル画像（ミスあり）を生成</span>
-                    </button>
-                </div>
-            </div>
-            <!-- 任意のGemini APIキー設定パネル（デフォルト非表示） -->
-            <div id="apiKeyPanel" class="hidden mt-4 pt-4 border-t border-white/15 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div class="text-xs text-slate-300">
-                    <span class="font-bold text-white">外部AIモード（任意）:</span> 未入力でも内蔵の日本語OCR＆校正エンジンで動作します。Gemini APIキーを入力するとAIによる高精度文脈チェックも併用します。
-                </div>
-                <div class="flex items-center gap-2 shrink-0">
-                    <input type="password" id="geminiApiKeyInput" placeholder="AIzaSy...（任意）" class="px-3 py-1.5 text-xs bg-slate-900/80 text-white border border-slate-600 rounded-lg focus:outline-none focus:border-blue-400 w-56">
-                    <button type="button" id="saveApiKeyBtn" class="px-3 py-1.5 text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition">適用</button>
-                </div>
-            </div>
+  <!-- ヘッダー -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2">
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-lg shadow-sm shrink-0">
+          T
         </div>
-    </header>
+        <div class="min-w-0">
+          <h1 class="text-lg sm:text-xl font-bold tracking-tight text-slate-900 truncate">TEST-TEST.</h1>
+          <p class="text-xs text-slate-500 hidden sm:block truncate">テスト問題・解答用紙 校正＆整合性チェッカー</p>
+        </div>
+      </div>
 
-    <!-- メインコンテンツ -->
-    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      <div class="flex items-center gap-2 shrink-0">
+        <button id="btn-load-sample" type="button" class="text-xs sm:text-sm bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-medium px-3 py-2 rounded-xl transition">
+          サンプル（ミスあり）を試す
+        </button>
+        <button id="btn-clear-all" type="button" class="text-xs sm:text-sm bg-white hover:bg-rose-50 active:bg-rose-100 text-rose-600 border border-rose-200 font-medium px-3 py-2 rounded-xl transition">
+          すべてクリア
+        </button>
+      </div>
+    </div>
+  </header>
 
-        <!-- 通知メッセージボックス（alertの代替） -->
-        <div id="toastBanner" class="hidden rounded-xl p-4 border shadow-sm transition-all duration-300 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <span id="toastIcon"></span>
-                <p id="toastMessage" class="text-sm font-medium"></p>
-            </div>
-            <button type="button" onclick="hideToast()" class="text-slate-400 hover:text-slate-600 p-1">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-            </button>
+  <!-- 広告スペース（ヘッダー下部：忍者AdMax 非同期タグ） -->
+  <div class="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 mt-4 flex justify-center">
+    <div class="w-full max-w-[740px] min-h-[98px] bg-slate-100/80 border border-slate-200 rounded-xl flex items-center justify-center overflow-x-auto ad-scroll p-1">
+      <!-- admax -->
+      <div class="admax-ads shrink-0" data-admax-id="6c9518e1ac870e8cc62671aa9fb6424d" style="display:inline-block;width:728px;height:90px;"></div>
+      <script type="text/javascript">(admaxads = window.admaxads || []).push({admax_id: "6c9518e1ac870e8cc62671aa9fb6424d",type: "banner"});</script>
+      <script type="text/javascript" charset="utf-8" src="https://adm.shinobi.jp/st/t.js" async></script>
+      <!-- admax -->
+    </div>
+  </div>
+
+  <!-- メインコンテンツ -->
+  <main class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- 検査オプションバー -->
+    <section class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex flex-wrap items-center justify-between gap-4">
+      <div class="flex flex-wrap items-center gap-4">
+        <label class="inline-flex items-center gap-2.5 cursor-pointer select-none">
+          <input id="chk-total-score" type="checkbox" checked class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" />
+          <span class="text-sm font-medium text-slate-700">目標合計点（満点）チェックを有効にする</span>
+        </label>
+        <div id="score-input-wrapper" class="flex items-center gap-2 transition-opacity">
+          <input id="input-target-score" type="number" value="100" min="1" max="1000" class="w-24 px-3 py-1.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-right font-bold text-indigo-700" />
+          <span class="text-sm font-medium text-slate-600">点満点</span>
+        </div>
+      </div>
+
+      <div class="text-xs text-slate-500 flex items-center gap-1.5">
+        <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+        <span>ブラウザ内完結（APIキー不要）・画像OCR＆テキスト自動照合</span>
+      </div>
+    </section>
+
+    <!-- 入力エリア（左右2カラム） -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      
+      <!-- 左：問題用紙 -->
+      <div id="dropzone-question" class="bg-white rounded-xl border-2 border-slate-200 p-5 shadow-sm flex flex-col gap-4 transition">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-1 rounded-lg bg-blue-100 text-blue-800 text-xs font-bold">問題用紙</span>
+            <h2 class="font-bold text-slate-800">問題文のテキスト・画像</h2>
+          </div>
+          <label class="cursor-pointer text-xs bg-blue-50 hover:bg-blue-100 active:bg-blue-200 text-blue-700 font-medium px-3 py-2 rounded-xl border border-blue-200 transition inline-flex items-center gap-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <span>画像を追加</span>
+            <input id="file-question" type="file" accept="image/*" multiple class="hidden" />
+          </label>
         </div>
 
-        <!-- 入力エリア（2カラム：テキスト＆画像ハイブリッド） -->
-        <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- 左：問題用紙エリア -->
-            <div id="questionDropZone" class="bg-white rounded-2xl shadow-sm border-2 border-slate-200 overflow-hidden flex flex-col transition-colors">
-                <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between flex-wrap gap-2">
-                    <div class="flex items-center gap-2">
-                        <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
-                        <h2 class="font-bold text-slate-800 text-base">問題用紙（テキスト / 画像）</h2>
-                        <span id="questionLineCount" class="text-xs text-slate-500 bg-slate-200/70 px-2 py-0.5 rounded-md">0行</span>
-                        <span id="questionImgCount" class="hidden text-xs text-blue-700 bg-blue-100 px-2 py-0.5 rounded-md font-medium">画像 0枚</span>
-                    </div>
-                    <div class="flex items-center gap-1.5">
-                        <label class="cursor-pointer text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-2.5 py-1.5 rounded-lg transition inline-flex items-center gap-1">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                            <span>画像追加</span>
-                            <input type="file" id="questionFileInput" accept="image/*" multiple class="hidden">
-                        </label>
-                        <button type="button" id="clearQuestionBtn" class="text-xs text-slate-500 hover:text-red-600 hover:bg-red-50 px-2.5 py-1.5 rounded-lg transition flex items-center gap-1">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                            クリア
-                        </button>
-                    </div>
-                </div>
+        <p class="text-xs text-slate-500 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
+          テキスト貼り付け、画像のドラッグ＆ドロップ、または入力欄で <kbd class="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[11px] font-mono">Ctrl+V</kbd>（Macは <kbd class="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[11px] font-mono">Cmd+V</kbd>）で画像を直接貼り付けられます。
+        </p>
 
-                <!-- 画像ドロップ＆貼り付けガイドバー -->
-                <div class="px-4 py-2 bg-blue-50/50 border-b border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                    <span>📋 画像のドラッグ＆ドロップ、または入力欄で <kbd class="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[11px] font-mono">Ctrl+V</kbd> で貼り付け可能</span>
-                </div>
+        <textarea id="text-question" rows="12" placeholder="ここに問題用紙のテキストを貼り付けるか、画像をドロップ／貼り付けしてください...&#10;例：&#10;【大問1】次の問いに答えなさい。（各5点）&#10;問1 地球の自転によって起こる現象を選びなさい。" class="w-full rounded-xl border border-slate-300 p-3.5 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"></textarea>
 
-                <!-- 添付画像サムネイル一覧（問題用紙） -->
-                <div id="questionImagePreviewList" class="hidden p-3 bg-slate-50/70 border-b border-slate-200 flex gap-3 overflow-x-auto custom-scroll">
-                    <!-- JSで動的にサムネイルを追加 -->
-                </div>
+        <!-- 問題画像プレビュー -->
+        <div id="preview-question" class="flex flex-wrap gap-3 empty:hidden"></div>
+      </div>
 
-                <div class="relative flex h-72 sm:h-80 bg-white">
-                    <div id="questionGutter" class="line-num-gutter w-10 shrink-0 overflow-hidden">1</div>
-                    <textarea id="questionInput" class="code-textarea w-full h-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500/40 text-slate-800 placeholder-slate-400" placeholder="ここにテストの問題用紙のテキストを貼り付けるか、画像をドラッグ＆ドロップ / Ctrl+V で貼り付けてください...&#10;（画像のみ・テキストのみ・両方併用のいずれも対応しています）"></textarea>
-                </div>
-            </div>
-
-            <!-- 右：解答用紙エリア -->
-            <div id="answerDropZone" class="bg-white rounded-2xl shadow-sm border-2 border-slate-200 overflow-hidden flex flex-col transition-colors">
-                <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between flex-wrap gap-2">
-                    <div class="flex items-center gap-2">
-                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
-                        <h2 class="font-bold text-slate-800 text-base">解答用紙（テキスト / 画像）</h2>
-                        <span id="answerLineCount" class="text-xs text-slate-500 bg-slate-200/70 px-2 py-0.5 rounded-md">0行</span>
-                        <span id="answerImgCount" class="hidden text-xs text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md font-medium">画像 0枚</span>
-                    </div>
-                    <div class="flex items-center gap-1.5">
-                        <label class="cursor-pointer text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1.5 rounded-lg transition inline-flex items-center gap-1">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                            <span>画像追加</span>
-                            <input type="file" id="answerFileInput" accept="image/*" multiple class="hidden">
-                        </label>
-                        <button type="button" id="clearAnswerBtn" class="text-xs text-slate-500 hover:text-red-600 hover:bg-red-50 px-2.5 py-1.5 rounded-lg transition flex items-center gap-1">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                            クリア
-                        </button>
-                    </div>
-                </div>
-
-                <!-- 画像ドロップ＆貼り付けガイドバー -->
-                <div class="px-4 py-2 bg-emerald-50/50 border-b border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                    <span>📋 画像のドラッグ＆ドロップ、または入力欄で <kbd class="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[11px] font-mono">Ctrl+V</kbd> で貼り付け可能</span>
-                </div>
-
-                <!-- 添付画像サムネイル一覧（解答用紙） -->
-                <div id="answerImagePreviewList" class="hidden p-3 bg-slate-50/70 border-b border-slate-200 flex gap-3 overflow-x-auto custom-scroll">
-                    <!-- JSで動的にサムネイルを追加 -->
-                </div>
-
-                <div class="relative flex h-72 sm:h-80 bg-white">
-                    <div id="answerGutter" class="line-num-gutter w-10 shrink-0 overflow-hidden">1</div>
-                    <textarea id="answerInput" class="code-textarea w-full h-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-emerald-500/40 text-slate-800 placeholder-slate-400" placeholder="ここに解答用紙のテキストを貼り付けるか、画像をドラッグ＆ドロップ / Ctrl+V で貼り付けてください...&#10;（画像のみ・テキストのみ・両方併用のいずれも対応しています）"></textarea>
-                </div>
-            </div>
-        </section>
-
-        <!-- アクション・オプションエリア -->
-        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
-            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                <!-- チェック項目オプション -->
-                <div class="space-y-2">
-                    <div class="flex items-center gap-2">
-                        <p class="text-xs font-bold uppercase tracking-wider text-slate-400">検査オプション</p>
-                        <span id="engineModeBadge" class="text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded font-medium">内蔵OCR＆高精度ルール校正モード（キー不要）</span>
-                    </div>
-                    <div class="flex flex-wrap gap-4 sm:gap-6">
-                        <label class="inline-flex items-center gap-2.5 cursor-pointer select-none group">
-                            <input type="checkbox" id="optTypos" checked class="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500">
-                            <span class="text-sm font-medium text-slate-700 group-hover:text-slate-900">誤字脱字・表記ゆれ・図表参照チェック</span>
-                        </label>
-                        <label class="inline-flex items-center gap-2.5 cursor-pointer select-none group">
-                            <input type="checkbox" id="optSequence" checked class="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500">
-                            <span class="text-sm font-medium text-slate-700 group-hover:text-slate-900">設問番号の連番・重複チェック</span>
-                        </label>
-                        <label class="inline-flex items-center gap-2.5 cursor-pointer select-none group">
-                            <input type="checkbox" id="optConsistency" checked class="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500">
-                            <span class="text-sm font-medium text-slate-700 group-hover:text-slate-900">問題と解答用紙の整合性・配点チェック</span>
-                        </label>
-                    </div>
-
-                    <!-- 目標合計点（満点）チェック設定 -->
-                    <div class="pt-2 mt-2 border-t border-slate-100 flex flex-wrap items-center gap-3">
-                        <label class="inline-flex items-center gap-2.5 cursor-pointer select-none group">
-                            <input type="checkbox" id="optTotalScore" checked class="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500">
-                            <span class="text-sm font-medium text-slate-700 group-hover:text-slate-900">目標合計点（満点）と配点合計の照合を行う</span>
-                        </label>
-                        <div id="targetScoreBox" class="inline-flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 transition-opacity">
-                            <label for="targetScoreInput" class="text-xs font-bold text-slate-600">目標合計点:</label>
-                            <input type="number" id="targetScoreInput" value="100" min="1" max="1000" step="1" class="w-20 px-2 py-0.5 text-sm font-bold text-right text-blue-700 bg-white border border-slate-300 rounded focus:outline-none focus:border-blue-500">
-                            <span class="text-xs font-bold text-slate-600">点満点</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 実行ボタン -->
-                <div class="shrink-0">
-                    <button id="runCheckBtn" type="button" class="w-full lg:w-auto inline-flex items-center justify-center gap-2.5 px-7 py-3.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-slate-400 disabled:cursor-not-allowed text-white font-bold text-base rounded-xl shadow-md shadow-blue-600/20 transition transform active:scale-[0.99]">
-                        <svg id="runBtnIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                        </svg>
-                        <span id="runBtnText">校正チェックを実行する</span>
-                    </button>
-                </div>
-            </div>
-        </section>
-
-        <!-- ローディングインジケーター -->
-        <section id="loadingSection" class="hidden bg-white rounded-2xl shadow-sm border border-blue-200 p-8 text-center space-y-4">
-            <div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-blue-50 text-blue-600">
-                <svg class="w-8 h-8 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-            </div>
-            <div>
-                <h3 id="loadingTitle" class="text-lg font-bold text-slate-800">問題用紙と解答用紙を解析しています...</h3>
-                <p id="loadingSubtitle" class="text-sm text-slate-500 mt-1">画像の文字読み取り（OCR）および設問ごとの整合性と誤字脱字を照合中です。</p>
-            </div>
-        </section>
-
-        <!-- 結果表示エリア（初期状態は非表示） -->
-        <section id="resultsSection" class="hidden space-y-6 pb-10">
-            
-            <!-- サマリーダッシュボード（4カラム） -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex items-center justify-between">
-                    <div>
-                        <p class="text-sm font-medium text-slate-500">検出された指摘（合計）</p>
-                        <p id="totalIssuesCount" class="text-3xl font-bold text-slate-800 mt-1">0<span class="text-base font-normal text-slate-500 ml-1">件</span></p>
-                    </div>
-                    <div class="w-11 h-11 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                    </div>
-                </div>
-
-                <div class="bg-white rounded-2xl p-5 border border-red-200 shadow-sm flex items-center justify-between">
-                    <div>
-                        <p class="text-sm font-medium text-red-600">要修正（重大なミス）</p>
-                        <p id="errorIssuesCount" class="text-3xl font-bold text-red-600 mt-1">0<span class="text-base font-normal text-red-400 ml-1">件</span></p>
-                    </div>
-                    <div class="w-11 h-11 rounded-xl bg-red-50 flex items-center justify-center text-red-600">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                    </div>
-                </div>
-
-                <div class="bg-white rounded-2xl p-5 border border-amber-200 shadow-sm flex items-center justify-between">
-                    <div>
-                        <p class="text-sm font-medium text-amber-600">確認推奨（表記・形式）</p>
-                        <p id="warningIssuesCount" class="text-3xl font-bold text-amber-600 mt-1">0<span class="text-base font-normal text-amber-400 ml-1">件</span></p>
-                    </div>
-                    <div class="w-11 h-11 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                    </div>
-                </div>
-
-                <div class="bg-white rounded-2xl p-5 border border-sky-200 shadow-sm flex items-center justify-between">
-                    <div>
-                        <p class="text-sm font-medium text-sky-600">改善提案（より良い出題へ）</p>
-                        <p id="infoIssuesCount" class="text-3xl font-bold text-sky-600 mt-1">0<span class="text-base font-normal text-sky-400 ml-1">件</span></p>
-                    </div>
-                    <div class="w-11 h-11 rounded-xl bg-sky-50 flex items-center justify-center text-sky-600">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                    </div>
-                </div>
-            </div>
-
-            <!-- AI総評バナー -->
-            <div id="aiSummaryBox" class="hidden bg-gradient-to-r from-slate-800 to-slate-900 text-white rounded-2xl p-5 shadow-sm">
-                <div class="flex items-start gap-3">
-                    <span class="px-2.5 py-1 bg-blue-500/30 border border-blue-400/40 rounded-lg text-xs font-bold text-blue-200 shrink-0 mt-0.5">AI総評</span>
-                    <p id="aiSummaryText" class="text-sm leading-relaxed text-slate-200"></p>
-                </div>
-            </div>
-
-            <!-- 指摘事項リスト -->
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                    <h3 class="font-bold text-slate-800 text-lg flex items-center gap-2">
-                        <span>検出された指摘事項と修正案</span>
-                    </h3>
-                    <div class="flex flex-wrap items-center gap-2 text-xs">
-                        <button type="button" onclick="filterIssues('all')" id="filterAll" class="px-3 py-1.5 rounded-lg font-medium bg-slate-800 text-white transition">すべて</button>
-                        <button type="button" onclick="filterIssues('error')" id="filterError" class="px-3 py-1.5 rounded-lg font-medium bg-slate-200 text-slate-700 hover:bg-slate-300 transition">要修正のみ</button>
-                        <button type="button" onclick="filterIssues('warning')" id="filterWarning" class="px-3 py-1.5 rounded-lg font-medium bg-slate-200 text-slate-700 hover:bg-slate-300 transition">確認推奨のみ</button>
-                        <button type="button" onclick="filterIssues('info')" id="filterInfo" class="px-3 py-1.5 rounded-lg font-medium bg-slate-200 text-slate-700 hover:bg-slate-300 transition">改善提案のみ</button>
-                        <span class="text-slate-300 mx-1 hidden sm:inline">|</span>
-                        <button type="button" id="copyReportBtn" class="px-3 py-1.5 rounded-lg font-medium bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 transition inline-flex items-center gap-1.5 shadow-sm">
-                            <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                            </svg>
-                            <span>結果をコピー</span>
-                        </button>
-                    </div>
-                </div>
-
-                <div id="issuesListContainer" class="divide-y divide-slate-100">
-                    <!-- JSで動的に挿入 -->
-                </div>
-            </div>
-
-            <!-- 問題・解答用紙 設問対応プレビュー -->
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <div class="px-6 py-4 bg-slate-50 border-b border-slate-200">
-                    <h3 class="font-bold text-slate-800 text-lg">設問・解答欄 対比プレビュー</h3>
-                    <p class="text-xs text-slate-500 mt-0.5">テキスト・画像から抽出された設問ごとに、問題用紙側と解答用紙側の対応状況を照合します。</p>
-                </div>
-                <div class="overflow-x-auto custom-scroll">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="bg-slate-100/80 text-slate-600 text-xs uppercase tracking-wider border-b border-slate-200">
-                                <th class="py-3 px-4 font-bold w-32">設問ID</th>
-                                <th class="py-3 px-4 font-bold w-28 text-center">判定</th>
-                                <th class="py-3 px-4 font-bold">問題用紙の読み取り内容</th>
-                                <th class="py-3 px-4 font-bold">解答用紙の読み取り内容</th>
-                            </tr>
-                        </thead>
-                        <tbody id="comparisonTableBody" class="divide-y divide-slate-100 text-sm">
-                            <!-- JSで動的に挿入 -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-        </section>
-
-    </main>
-
-    <!-- 画像拡大モーダル -->
-    <div id="imageModal" class="hidden fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4" onclick="closeImageModal()">
-        <div class="relative max-w-4xl w-full bg-white rounded-2xl overflow-hidden shadow-2xl" onclick="event.stopPropagation()">
-            <div class="px-4 py-3 bg-slate-800 text-white flex items-center justify-between">
-                <span id="modalImageTitle" class="text-sm font-bold truncate">画像プレビュー</span>
-                <button type="button" onclick="closeImageModal()" class="p-1 text-slate-300 hover:text-white rounded-lg">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
-            <div class="p-4 bg-slate-100 max-h-[80vh] overflow-auto flex items-center justify-center">
-                <img id="modalImageTag" src="" alt="拡大画像" class="max-w-full h-auto rounded-lg shadow border border-slate-300">
-            </div>
+      <!-- 右：解答用紙 -->
+      <div id="dropzone-answer" class="bg-white rounded-xl border-2 border-slate-200 p-5 shadow-sm flex flex-col gap-4 transition">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 text-xs font-bold">解答用紙</span>
+            <h2 class="font-bold text-slate-800">解答欄のテキスト・画像</h2>
+          </div>
+          <label class="cursor-pointer text-xs bg-emerald-50 hover:bg-emerald-100 active:bg-emerald-200 text-emerald-700 font-medium px-3 py-2 rounded-xl border border-emerald-200 transition inline-flex items-center gap-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <span>画像を追加</span>
+            <input id="file-answer" type="file" accept="image/*" multiple class="hidden" />
+          </label>
         </div>
+
+        <p class="text-xs text-slate-500 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
+          テキスト貼り付け、画像のドラッグ＆ドロップ、または入力欄で <kbd class="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[11px] font-mono">Ctrl+V</kbd>（Macは <kbd class="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[11px] font-mono">Cmd+V</kbd>）で画像を直接貼り付けられます。
+        </p>
+
+        <textarea id="text-answer" rows="12" placeholder="ここに解答用紙のテキストを貼り付けるか、画像をドロップ／貼り付けしてください...&#10;例：&#10;【大問1】&#10;問1 [ ア ・ イ ・ ウ ・ エ ] （5点）" class="w-full rounded-xl border border-slate-300 p-3.5 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y"></textarea>
+
+        <!-- 解答画像プレビュー -->
+        <div id="preview-answer" class="flex flex-wrap gap-3 empty:hidden"></div>
+      </div>
+
+    </section>
+
+    <!-- チェック実行ボタン -->
+    <div class="flex justify-center">
+      <button id="btn-run-check" type="button" class="w-full sm:w-auto min-w-[300px] bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:bg-slate-400 disabled:cursor-not-allowed text-white font-bold text-base px-8 py-4 rounded-xl shadow-md hover:shadow-lg transition flex items-center justify-center gap-2">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span>校正・整合性チェックを実行する</span>
+      </button>
     </div>
 
-    <!-- フッター -->
-    <footer class="bg-white border-t border-slate-200 py-6 mt-auto">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-xs text-slate-500">
-            <p>TEST-TEST. — テキスト・画像マルチモーダルAI解析対応</p>
+    <!-- 進捗表示 -->
+    <div id="progress-box" class="hidden bg-indigo-50 border border-indigo-200 rounded-xl p-5 text-center space-y-2.5">
+      <p id="progress-text" class="text-sm font-bold text-indigo-800">解析を実行中です...</p>
+      <div class="w-full max-w-md mx-auto bg-indigo-200 rounded-full h-2.5 overflow-hidden">
+        <div id="progress-bar" class="bg-indigo-600 h-2.5 rounded-full transition-all duration-300" style="width: 30%"></div>
+      </div>
+    </div>
+
+    <!-- 結果表示エリア -->
+    <section id="result-section" class="hidden space-y-6">
+      <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-4">
+          <h3 class="text-lg font-bold text-slate-900">校正・チェック結果レポート</h3>
+          <div id="summary-badges" class="flex flex-wrap gap-2"></div>
         </div>
-    </footer>
 
-    <!-- アプリケーションロジック -->
-    <script>
-        // ==========================================
-        // 状態管理・DOM要素の取得
-        // ==========================================
-        const questionInput = document.getElementById('questionInput');
-        const answerInput = document.getElementById('answerInput');
-        const questionGutter = document.getElementById('questionGutter');
-        const answerGutter = document.getElementById('answerGutter');
-        const questionLineCount = document.getElementById('questionLineCount');
-        const answerLineCount = document.getElementById('answerLineCount');
+        <div id="issues-list" class="space-y-3"></div>
+      </div>
 
-        const questionDropZone = document.getElementById('questionDropZone');
-        const answerDropZone = document.getElementById('answerDropZone');
-        const questionFileInput = document.getElementById('questionFileInput');
-        const answerFileInput = document.getElementById('answerFileInput');
-        const questionImagePreviewList = document.getElementById('questionImagePreviewList');
-        const answerImagePreviewList = document.getElementById('answerImagePreviewList');
-        const questionImgCount = document.getElementById('questionImgCount');
-        const answerImgCount = document.getElementById('answerImgCount');
+      <!-- 設問対比テーブル -->
+      <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4">
+        <h3 class="text-base font-bold text-slate-900">問題用紙 vs 解答用紙 設問対応表</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-50 border-b border-slate-200 text-slate-600">
+                <th class="py-2.5 px-3 font-semibold whitespace-nowrap">大問・設問番号</th>
+                <th class="py-2.5 px-3 font-semibold">問題用紙の内容・選択肢・配点</th>
+                <th class="py-2.5 px-3 font-semibold">解答用紙の枠・選択肢・配点</th>
+                <th class="py-2.5 px-3 font-semibold whitespace-nowrap">判定</th>
+              </tr>
+            </thead>
+            <tbody id="comparison-tbody" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
 
-        const loadSampleBtn = document.getElementById('loadSampleBtn');
-        const loadSampleImageBtn = document.getElementById('loadSampleImageBtn');
-        const toggleApiKeyBtn = document.getElementById('toggleApiKeyBtn');
-        const apiKeyPanel = document.getElementById('apiKeyPanel');
-        const geminiApiKeyInput = document.getElementById('geminiApiKeyInput');
-        const saveApiKeyBtn = document.getElementById('saveApiKeyBtn');
-        const engineModeBadge = document.getElementById('engineModeBadge');
-        const clearQuestionBtn = document.getElementById('clearQuestionBtn');
-        const clearAnswerBtn = document.getElementById('clearAnswerBtn');
-        const runCheckBtn = document.getElementById('runCheckBtn');
-        const copyReportBtn = document.getElementById('copyReportBtn');
+  </main>
 
-        let userGeminiApiKey = '';
+  <!-- 広告スペース（フッター上部：忍者AdMax 非同期タグ） -->
+  <div class="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 mb-6 flex justify-center">
+    <div class="w-full max-w-[740px] min-h-[98px] bg-slate-100/80 border border-slate-200 rounded-xl flex items-center justify-center overflow-x-auto ad-scroll p-1">
+      <!-- admax -->
+      <div class="admax-ads shrink-0" data-admax-id="6c9518e1ac870e8cc62671aa9fb6424d" style="display:inline-block;width:728px;height:90px;"></div>
+      <script type="text/javascript">(admaxads = window.admaxads || []).push({admax_id: "6c9518e1ac870e8cc62671aa9fb6424d",type: "banner"});</script>
+      <script type="text/javascript" charset="utf-8" src="https://adm.shinobi.jp/st/t.js" async></script>
+      <!-- admax -->
+    </div>
+  </div>
 
-        toggleApiKeyBtn.addEventListener('click', () => {
-            apiKeyPanel.classList.toggle('hidden');
+  <!-- フッター -->
+  <footer class="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-500">
+    <p>&copy; 2026 TEST-TEST. All rights reserved.</p>
+  </footer>
+
+  <!-- トースト通知（alertの代替） -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 hidden bg-slate-900 text-white text-sm px-4 py-3 rounded-xl shadow-lg transition-opacity duration-300 max-w-sm"></div>
+
+  <script>
+    // ==========================================
+    // アプリケーション状態管理
+    // ==========================================
+    const state = {
+      questionImages: [],
+      answerImages: [],
+      lastFocusedTarget: 'question'
+    };
+
+    const el = {
+      textQ: document.getElementById('text-question'),
+      textA: document.getElementById('text-answer'),
+      fileQ: document.getElementById('file-question'),
+      fileA: document.getElementById('file-answer'),
+      previewQ: document.getElementById('preview-question'),
+      previewA: document.getElementById('preview-answer'),
+      dropQ: document.getElementById('dropzone-question'),
+      dropA: document.getElementById('dropzone-answer'),
+      chkScore: document.getElementById('chk-total-score'),
+      scoreWrapper: document.getElementById('score-input-wrapper'),
+      inputScore: document.getElementById('input-target-score'),
+      btnCheck: document.getElementById('btn-run-check'),
+      btnSample: document.getElementById('btn-load-sample'),
+      btnClear: document.getElementById('btn-clear-all'),
+      progressBox: document.getElementById('progress-box'),
+      progressText: document.getElementById('progress-text'),
+      progressBar: document.getElementById('progress-bar'),
+      resultSection: document.getElementById('result-section'),
+      summaryBadges: document.getElementById('summary-badges'),
+      issuesList: document.getElementById('issues-list'),
+      comparisonTbody: document.getElementById('comparison-tbody'),
+      toast: document.getElementById('toast')
+    };
+
+    // ==========================================
+    // トースト通知表示関数
+    // ==========================================
+    function showToast(msg) {
+      if (!el.toast) return;
+      el.toast.textContent = msg;
+      el.toast.classList.remove('hidden');
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => {
+        el.toast.classList.add('hidden');
+      }, 3500);
+    }
+
+    // HTMLエスケープ処理（XSS対策）
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // ==========================================
+    // 合計点チェックのON/OFF切り替え
+    // ==========================================
+    el.chkScore.addEventListener('change', () => {
+      const enabled = el.chkScore.checked;
+      el.inputScore.disabled = !enabled;
+      el.scoreWrapper.classList.toggle('opacity-40', !enabled);
+    });
+
+    // ==========================================
+    // 画像追加・プレビュー・削除処理
+    // ==========================================
+    function addImages(target, files) {
+      const list = target === 'question' ? state.questionImages : state.answerImages;
+      const validFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
+      if (!validFiles.length) {
+        showToast('画像ファイル（PNG, JPG, WebPなど）を選択してください');
+        return;
+      }
+
+      let loaded = 0;
+      validFiles.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          list.push({
+            name: file.name || `image-${Date.now()}.png`,
+            dataUrl: e.target.result
+          });
+          loaded++;
+          if (loaded === validFiles.length) {
+            renderPreviews(target);
+            showToast(`${target === 'question' ? '問題用紙' : '解答用紙'}に画像を ${validFiles.length} 枚追加しました`);
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function renderPreviews(target) {
+      const list = target === 'question' ? state.questionImages : state.answerImages;
+      const container = target === 'question' ? el.previewQ : el.previewA;
+      container.innerHTML = '';
+
+      list.forEach((img, idx) => {
+        const div = document.createElement('div');
+        div.className = 'relative group w-24 h-24 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 shadow-sm';
+        div.innerHTML = `
+          <img src="${img.dataUrl}" alt="${escapeHtml(img.name)}" class="w-full h-full object-cover" />
+          <span class="absolute bottom-0 inset-x-0 bg-slate-900/70 text-white text-[10px] px-1.5 py-0.5 truncate">${idx + 1}枚目</span>
+          <button type="button" class="absolute top-1 right-1 bg-rose-600 hover:bg-rose-700 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center shadow" title="削除">&times;</button>
+        `;
+        div.querySelector('button').addEventListener('click', () => {
+          list.splice(idx, 1);
+          renderPreviews(target);
+          showToast('画像を削除しました');
         });
+        container.appendChild(div);
+      });
+    }
 
-        saveApiKeyBtn.addEventListener('click', () => {
-            userGeminiApiKey = geminiApiKeyInput.value.trim();
-            if (userGeminiApiKey) {
-                engineModeBadge.textContent = 'Gemini AI マルチモーダル校正モード（APIキー設定済み）';
-                engineModeBadge.className = 'text-[11px] text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded font-medium';
-                showToast('Gemini APIキーを適用しました。AIモードで校正を実行します。', 'success');
-            } else {
-                engineModeBadge.textContent = '内蔵OCR＆高精度ルール校正モード（キー不要）';
-                engineModeBadge.className = 'text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded font-medium';
-                showToast('APIキーをクリアしました。内蔵OCR＆ルール校正モードで動作します。', 'info');
-            }
-            apiKeyPanel.classList.add('hidden');
-        });
+    el.fileQ.addEventListener('change', (e) => {
+      if (e.target.files.length) addImages('question', e.target.files);
+      e.target.value = '';
+    });
+    el.fileA.addEventListener('change', (e) => {
+      if (e.target.files.length) addImages('answer', e.target.files);
+      e.target.value = '';
+    });
 
-        const optTypos = document.getElementById('optTypos');
-        const optSequence = document.getElementById('optSequence');
-        const optConsistency = document.getElementById('optConsistency');
-        const optTotalScore = document.getElementById('optTotalScore');
-        const targetScoreBox = document.getElementById('targetScoreBox');
-        const targetScoreInput = document.getElementById('targetScoreInput');
+    el.textQ.addEventListener('focus', () => { state.lastFocusedTarget = 'question'; });
+    el.textA.addEventListener('focus', () => { state.lastFocusedTarget = 'answer'; });
 
-        optTotalScore.addEventListener('change', () => {
-            if (optTotalScore.checked) {
-                targetScoreBox.classList.remove('opacity-40', 'pointer-events-none');
-                targetScoreInput.disabled = false;
-            } else {
-                targetScoreBox.classList.add('opacity-40', 'pointer-events-none');
-                targetScoreInput.disabled = true;
-            }
-        });
-
-        const loadingSection = document.getElementById('loadingSection');
-        const resultsSection = document.getElementById('resultsSection');
-        const aiSummaryBox = document.getElementById('aiSummaryBox');
-        const aiSummaryText = document.getElementById('aiSummaryText');
-        const totalIssuesCount = document.getElementById('totalIssuesCount');
-        const errorIssuesCount = document.getElementById('errorIssuesCount');
-        const warningIssuesCount = document.getElementById('warningIssuesCount');
-        const infoIssuesCount = document.getElementById('infoIssuesCount');
-        const issuesListContainer = document.getElementById('issuesListContainer');
-        const comparisonTableBody = document.getElementById('comparisonTableBody');
-
-        // 画像データ保持配列 { id, name, mimeType, base64, dataUrl }
-        let questionImages = [];
-        let answerImages = [];
-        let lastFocusedSide = 'question'; // クリップボード貼り付け先の判定用
-
-        let currentIssues = [];
-        let currentSummary = '';
-        let currentFilter = 'all';
-
-        // ==========================================
-        // 通知バナー（Toast）表示・非表示処理
-        // ==========================================
-        let toastTimer = null;
-        function showToast(message, type = 'info') {
-            const banner = document.getElementById('toastBanner');
-            const iconEl = document.getElementById('toastIcon');
-            const msgEl = document.getElementById('toastMessage');
-            if (!banner || !iconEl || !msgEl) return;
-
-            msgEl.textContent = message;
-            banner.className = 'rounded-xl p-4 border shadow-sm transition-all duration-300 flex items-center justify-between';
-
-            if (type === 'success') {
-                banner.classList.add('bg-emerald-50', 'border-emerald-200', 'text-emerald-800');
-                iconEl.innerHTML = `<svg class="w-5 h-5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
-            } else if (type === 'warning') {
-                banner.classList.add('bg-amber-50', 'border-amber-200', 'text-amber-800');
-                iconEl.innerHTML = `<svg class="w-5 h-5 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>`;
-            } else if (type === 'error') {
-                banner.classList.add('bg-red-50', 'border-red-200', 'text-red-800');
-                iconEl.innerHTML = `<svg class="w-5 h-5 text-red-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
-            } else {
-                banner.classList.add('bg-blue-50', 'border-blue-200', 'text-blue-800');
-                iconEl.innerHTML = `<svg class="w-5 h-5 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
-            }
-
-            banner.classList.remove('hidden');
-            if (toastTimer) clearTimeout(toastTimer);
-            toastTimer = setTimeout(() => hideToast(), 6000);
+    // ドラッグ＆ドロップおよびエリア内ペースト対応
+    [
+      { zone: el.dropQ, target: 'question' },
+      { zone: el.dropA, target: 'answer' }
+    ].forEach(({ zone, target }) => {
+      zone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        zone.classList.add('drag-over');
+      });
+      zone.addEventListener('dragleave', () => {
+        zone.classList.remove('drag-over');
+      });
+      zone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        zone.classList.remove('drag-over');
+        state.lastFocusedTarget = target;
+        if (e.dataTransfer?.files?.length) {
+          addImages(target, e.dataTransfer.files);
         }
+      });
+    });
 
-        function hideToast() {
-            const banner = document.getElementById('toastBanner');
-            if (banner) banner.classList.add('hidden');
+    // ページ全体のクリップボード画像貼り付け（Ctrl+V / Cmd+V）対応
+    document.addEventListener('paste', (e) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      const files = [];
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          const f = item.getAsFile();
+          if (f) files.push(f);
         }
+      }
+      if (files.length > 0) {
+        e.preventDefault();
+        const active = document.activeElement;
+        let target = state.lastFocusedTarget;
+        if (el.dropA.contains(active)) target = 'answer';
+        else if (el.dropQ.contains(active)) target = 'question';
+        addImages(target, files);
+      }
+    });
 
-        // ==========================================
-        // 行番号ガター・スクロール同期処理
-        // ==========================================
-        function updateLineNumbers(textarea, gutter, countBadge) {
-            const lines = textarea.value.split('\n');
-            const count = lines.length;
-            gutter.innerHTML = Array.from({ length: count }, (_, i) => i + 1).join('<br>');
-            countBadge.textContent = `${textarea.value.trim() ? count : 0}行`;
-        }
+    // ==========================================
+    // サンプルデータ読み込み＆クリア機能
+    // ==========================================
+    el.btnSample.addEventListener('click', () => {
+      el.textQ.value = `【大問1】次の問いに答えなさい。（各5点）
+問1 地球の自転によって起こる現象を次ぎから1つ選らびなさい。
+ア 季節の変化　イ 昼夜の交代　ウ 星座の年周運動　エ 満ち欠け
 
-        questionInput.addEventListener('input', () => updateLineNumbers(questionInput, questionGutter, questionLineCount));
-        answerInput.addEventListener('input', () => updateLineNumbers(answerInput, answerGutter, answerLineCount));
-        questionInput.addEventListener('scroll', () => { questionGutter.scrollTop = questionInput.scrollTop; });
-        answerInput.addEventListener('scroll', () => { answerGutter.scrollTop = answerInput.scrollTop; });
-        questionInput.addEventListener('focus', () => { lastFocusedSide = 'question'; });
-        answerInput.addEventListener('focus', () => { lastFocusedSide = 'answer'; });
+問2 光合成が行われる細胞内のつくりを答えなさい。（5点
 
-        // ==========================================
-        // 画像アップロード・D&D・クリップボード貼り付け処理
-        // ==========================================
-        function renderImagePreviews(side) {
-            const images = side === 'question' ? questionImages : answerImages;
-            const container = side === 'question' ? questionImagePreviewList : answerImagePreviewList;
-            const countBadge = side === 'question' ? questionImgCount : answerImgCount;
+問4 酸性の水溶液にBTB溶液を加えたときの色を答えなさい。（5点）
 
-            if (images.length === 0) {
-                container.classList.add('hidden');
-                container.innerHTML = '';
-                countBadge.classList.add('hidden');
-                return;
-            }
+【大問2】日本の地理について答えなさい。
+問1 日本で最も面積が大きい都道府県を答えななさい。（10点）
+問2 次のうち、政令指定都市でないものを1つ選びなさい。（10点）
+ア 札幌市　イ 仙台市　ウ 熊本市　エ 盛岡市　オ 福岡市`;
 
-            container.classList.remove('hidden');
-            countBadge.classList.remove('hidden');
-            countBadge.textContent = `画像 ${images.length}枚`;
-
-            container.innerHTML = images.map((img, index) => `
-                <div class="relative group shrink-0 w-24 h-24 rounded-xl border border-slate-300 bg-white overflow-hidden shadow-sm">
-                    <img src="${img.dataUrl}" alt="${escapeHtml(img.name)}" class="w-full h-full object-cover cursor-pointer" onclick="openImageModal('${side}', ${index})">
-                    <div class="absolute inset-x-0 bottom-0 bg-slate-900/70 text-white text-[10px] px-1.5 py-0.5 truncate">
-                        ${index + 1}枚目
-                    </div>
-                    <button type="button" onclick="removeImage('${side}', ${index})" class="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-600/90 hover:bg-red-700 text-white flex items-center justify-center shadow text-xs" title="削除">
-                        ×
-                    </button>
-                </div>
-            `).join('');
-        }
-
-        function addImageFiles(files, side) {
-            const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
-            if (imageFiles.length === 0) {
-                showToast('画像ファイル（PNG, JPEG, WebPなど）を選択してください。', 'warning');
-                return;
-            }
-
-            let loadedCount = 0;
-            imageFiles.forEach(file => {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const dataUrl = e.target.result;
-                    const base64 = dataUrl.split(',')[1];
-                    const imgObj = {
-                        id: Date.now() + Math.random(),
-                        name: file.name || `pasted-image-${Date.now()}.png`,
-                        mimeType: file.type || 'image/png',
-                        base64,
-                        dataUrl
-                    };
-                    if (side === 'question') {
-                        questionImages.push(imgObj);
-                    } else {
-                        answerImages.push(imgObj);
-                    }
-                    loadedCount++;
-                    if (loadedCount === imageFiles.length) {
-                        renderImagePreviews(side);
-                        const label = side === 'question' ? '問題用紙' : '解答用紙';
-                        showToast(`${label}に画像を ${imageFiles.length} 枚追加しました。`, 'success');
-                    }
-                };
-                reader.readAsDataURL(file);
-            });
-        }
-
-        function removeImage(side, index) {
-            if (side === 'question') {
-                questionImages.splice(index, 1);
-            } else {
-                answerImages.splice(index, 1);
-            }
-            renderImagePreviews(side);
-        }
-
-        function openImageModal(side, index) {
-            const img = side === 'question' ? questionImages[index] : answerImages[index];
-            if (!img) return;
-            document.getElementById('modalImageTitle').textContent = `${side === 'question' ? '問題用紙' : '解答用紙'} - ${img.name}`;
-            document.getElementById('modalImageTag').src = img.dataUrl;
-            document.getElementById('imageModal').classList.remove('hidden');
-        }
-
-        function closeImageModal() {
-            document.getElementById('imageModal').classList.add('hidden');
-        }
-
-        // ファイル選択イベント
-        questionFileInput.addEventListener('change', (e) => {
-            if (e.target.files.length) addImageFiles(e.target.files, 'question');
-            e.target.value = '';
-        });
-        answerFileInput.addEventListener('change', (e) => {
-            if (e.target.files.length) addImageFiles(e.target.files, 'answer');
-            e.target.value = '';
-        });
-
-        // ドラッグ＆ドロップ設定
-        function setupDropZone(zoneEl, side) {
-            ['dragenter', 'dragover'].forEach(evName => {
-                zoneEl.addEventListener(evName, (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    zoneEl.classList.add(side === 'question' ? 'border-blue-500' : 'border-emerald-500', 'bg-blue-50/20');
-                });
-            });
-            ['dragleave', 'drop'].forEach(evName => {
-                zoneEl.addEventListener(evName, (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    zoneEl.classList.remove('border-blue-500', 'border-emerald-500', 'bg-blue-50/20');
-                });
-            });
-            zoneEl.addEventListener('drop', (e) => {
-                if (e.dataTransfer?.files?.length) {
-                    lastFocusedSide = side;
-                    addImageFiles(e.dataTransfer.files, side);
-                }
-            });
-        }
-        setupDropZone(questionDropZone, 'question');
-        setupDropZone(answerDropZone, 'answer');
-
-        // クリップボード画像貼り付け（Ctrl+V / Cmd+V）
-        document.addEventListener('paste', (e) => {
-            const items = e.clipboardData?.items;
-            if (!items) return;
-            const imageFiles = [];
-            for (const item of items) {
-                if (item.type.startsWith('image/')) {
-                    const file = item.getAsFile();
-                    if (file) imageFiles.push(file);
-                }
-            }
-            if (imageFiles.length > 0) {
-                e.preventDefault();
-                const activeEl = document.activeElement;
-                let targetSide = lastFocusedSide;
-                if (answerDropZone.contains(activeEl)) targetSide = 'answer';
-                else if (questionDropZone.contains(activeEl)) targetSide = 'question';
-                addImageFiles(imageFiles, targetSide);
-            }
-        });
-
-        // クリアボタン
-        clearQuestionBtn.addEventListener('click', () => {
-            questionInput.value = '';
-            questionImages = [];
-            updateLineNumbers(questionInput, questionGutter, questionLineCount);
-            renderImagePreviews('question');
-            showToast('問題用紙のテキストと画像をクリアしました。', 'info');
-        });
-        clearAnswerBtn.addEventListener('click', () => {
-            answerInput.value = '';
-            answerImages = [];
-            updateLineNumbers(answerInput, answerGutter, answerLineCount);
-            renderImagePreviews('answer');
-            showToast('解答用紙のテキストと画像をクリアしました。', 'info');
-        });
-
-        // ==========================================
-        // サンプルテキスト・サンプル画像生成機能
-        // ==========================================
-        loadSampleBtn.addEventListener('click', () => {
-            questionInput.value = `【大問1】次の問いに答えなさい。（各4点）
-問1 江戸幕府を開いた人物を次ぎの中から1つ選らびなさい。
-ア 織田信長　イ 豊臣秀吉　ウ 徳川家康　エ 明智光秀
-問2 下の図2を見て、日本の最南端にある島の名称を漢字で答えなさい（配点4点。
-問4 明治維新が行われた西暦を答えなさい。（4点）`;
-
-            answerInput.value = `【回答用紙】 2年1組 氏名（　　　　　　）
+      el.textA.value = `【回答用紙】
 【大問1】
-問1 ［ ア ・ イ ・ ウ ・ エ ・ オ ］（4点）
-問2 ［　　　　　　　　］（5点）
-問3 ［　　　　　　　　］（4点）
-問4 ［　　　　　　　　］（4点）`;
+問1 [ ア ・ イ ・ ウ ・ エ ・ オ ] （5点）
+問2 [ 　　　　　　　 ] （5点）
+問3 [ 　　　　　　　 ] （5点）
 
-            updateLineNumbers(questionInput, questionGutter, questionLineCount);
-            updateLineNumbers(answerInput, answerGutter, answerLineCount);
-            showToast('ミス・不整合を含んだサンプルテキストを読み込みました。「校正チェックを実行する」を押してください。', 'info');
+【大問2】
+問1 [ 　　　　　　　 ] （10点）
+問2 [ ア ・ イ ・ ウ ・ エ ] （15点）`;
+
+      el.chkScore.checked = true;
+      el.inputScore.disabled = false;
+      el.scoreWrapper.classList.remove('opacity-40');
+      el.inputScore.value = 100;
+      showToast('ミス・不整合入りのサンプルデータを読み込みました');
+    });
+
+    el.btnClear.addEventListener('click', () => {
+      el.textQ.value = '';
+      el.textA.value = '';
+      state.questionImages = [];
+      state.answerImages = [];
+      renderPreviews('question');
+      renderPreviews('answer');
+      el.resultSection.classList.add('hidden');
+      showToast('入力内容をすべてクリアしました');
+    });
+
+    // ==========================================
+    // Tesseract.js による画像内OCR処理
+    // ==========================================
+    async function extractTextFromImages(images, label) {
+      if (!images || !images.length) return '';
+      let combined = '';
+      for (let i = 0; i < images.length; i++) {
+        el.progressText.textContent = `${label}の画像（${i + 1}/${images.length}枚目）から文字を読み取り中...`;
+        const res = await Tesseract.recognize(images[i].dataUrl, 'jpn+eng');
+        combined += '\n' + (res.data.text || '');
+      }
+      return combined;
+    }
+
+    // ==========================================
+    // テキストからの設問・選択肢・配点パース処理
+    // ==========================================
+    function toHalfWidthNum(str) {
+      return str.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+    }
+
+    function parseQuestionsFromText(text) {
+      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      const items = [];
+      let currentSection = '大問1';
+      let defaultSectionPoints = null;
+
+      lines.forEach((line, idx) => {
+        // 大問の見出し検出
+        const secMatch = line.match(/(?:【|\[)?\s*(?:大問|第)\s*([0-9０-９一二三四五六七八九十]+)\s*(?:問|】|\])?/);
+        if (secMatch && (line.includes('大問') || /^【.*】/.test(line) || /^第[0-9０-９一二三四五]+問/.test(line))) {
+          currentSection = `大問${toHalfWidthNum(secMatch[1])}`;
+          const eachPt = line.match(/各\s*([0-9０-９]+)\s*点/);
+          defaultSectionPoints = eachPt ? parseInt(toHalfWidthNum(eachPt[1]), 10) : null;
+        }
+
+        // 小問番号の検出（問1、(1)、1. など）
+        const qMatch = line.match(/^(?:問|設問|\(|（)\s*([0-9０-９]+)\s*(?:\)|）|\.|．|\s|\[|【)/);
+        if (qMatch) {
+          const num = parseInt(toHalfWidthNum(qMatch[1]), 10);
+          const key = `${currentSection}-問${num}`;
+
+          // 配点の抽出
+          let points = defaultSectionPoints;
+          const ptMatch = line.match(/(?:配点)?\s*([0-9０-９]+)\s*点/);
+          if (ptMatch && !line.includes('各')) {
+            points = parseInt(toHalfWidthNum(ptMatch[1]), 10);
+          }
+
+          // 選択肢の抽出（該当行および次の行まで確認）
+          const lookahead = line + ' ' + (lines[idx + 1] || '');
+          const choices = [];
+          ['ア', 'イ', 'ウ', 'エ', 'オ', 'カ', 'キ', 'A', 'B', 'C', 'D', 'E'].forEach(ch => {
+            const re = new RegExp(`(?:^|[\\s\\[［・(（])${ch}(?:[\\s\\]］・)）]|$)`);
+            if (re.test(lookahead)) {
+              choices.push(ch);
+            }
+          });
+
+          items.push({
+            key,
+            section: currentSection,
+            num,
+            raw: line,
+            points,
+            choices: [...new Set(choices)]
+          });
+        }
+      });
+
+      return items;
+    }
+
+    // ==========================================
+    // 校正・整合性チェック実行処理
+    // ==========================================
+    el.btnCheck.addEventListener('click', async () => {
+      const rawQ = el.textQ.value.trim();
+      const rawA = el.textA.value.trim();
+
+      if (!rawQ && !rawA && !state.questionImages.length && !state.answerImages.length) {
+        showToast('問題用紙または解答用紙のテキスト・画像を入力してください');
+        return;
+      }
+
+      el.btnCheck.disabled = true;
+      el.progressBox.classList.remove('hidden');
+      el.progressBar.style.width = '20%';
+
+      try {
+        const ocrQ = await extractTextFromImages(state.questionImages, '問題用紙');
+        el.progressBar.style.width = '55%';
+        const ocrA = await extractTextFromImages(state.answerImages, '解答用紙');
+        el.progressBar.style.width = '80%';
+
+        const fullQ = (rawQ + '\n' + ocrQ).trim();
+        const fullA = (rawA + '\n' + ocrA).trim();
+
+        el.progressText.textContent = '誤字脱字・設問番号・配点・整合性を検証中...';
+
+        const issues = [];
+
+        // 1. 誤字・表記ゆれチェック
+        const typoRules = [
+          { pattern: /選らび/g, msg: '誤字：「選らび」→「選び」に修正してください。' },
+          { pattern: /次ぎ/g, msg: '誤字：「次ぎ」→「次」に修正してください。' },
+          { pattern: /ななさい/g, msg: '文字重複：「〜ななさい」→「〜なさい」に修正してください。' },
+          { pattern: /答えななさい/g, msg: '誤字：「答えななさい」→「答えなさい」に修正してください。' },
+          { pattern: /回答用紙/g, msg: '表記ゆれ：テストの解答記入欄を指す場合は「解答用紙」への統一を推奨します。' }
+        ];
+
+        typoRules.forEach(rule => {
+          if (rule.pattern.test(fullQ)) {
+            issues.push({ level: 'error', category: '問題文の誤字・表記', detail: rule.msg });
+          }
+          rule.pattern.lastIndex = 0;
+          if (rule.pattern.test(fullA)) {
+            issues.push({ level: 'warn', category: '解答用紙の表記', detail: rule.msg });
+          }
+          rule.pattern.lastIndex = 0;
         });
 
-        loadSampleImageBtn.addEventListener('click', () => {
-            const createSheetImage = (title, lines) => {
-                const canvas = document.createElement('canvas');
-                canvas.width = 900;
-                canvas.height = 460;
-                const ctx = canvas.getContext('2d');
-                ctx.fillStyle = '#ffffff';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.strokeStyle = '#1e293b';
-                ctx.lineWidth = 3;
-                ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40);
-
-                ctx.fillStyle = '#0f172a';
-                ctx.font = 'bold 26px "Noto Sans JP", sans-serif';
-                ctx.fillText(title, 45, 70);
-
-                ctx.beginPath();
-                ctx.moveTo(45, 88);
-                ctx.lineTo(canvas.width - 45, 88);
-                ctx.lineWidth = 2;
-                ctx.stroke();
-
-                ctx.font = '22px "Noto Sans JP", sans-serif';
-                lines.forEach((line, idx) => {
-                    ctx.fillText(line, 45, 135 + idx * 48);
-                });
-
-                const dataUrl = canvas.toDataURL('image/png');
-                return {
-                    id: Date.now() + Math.random(),
-                    name: `${title}.png`,
-                    mimeType: 'image/png',
-                    base64: dataUrl.split(',')[1],
-                    dataUrl
-                };
-            };
-
-            questionImages = [createSheetImage('sample_question.png', [
-                '【大問1】次の問いに答えなさい。',
-                '問1 次のうち植物の光合成に必要なものを1つ選らびなさい。',
-                '    ア 二酸化炭素   イ 窒素   ウ 水素   エ オゾン',
-                '問2 葉の表皮にある気孔の働きを答えなさい。（配点5点',
-                '問4 根から吸収された水が通る管を何というか。'
-            ])];
-
-            answerImages = [createSheetImage('sample_answer.png', [
-                '【回答用紙】 理科小テスト',
-                '【大問1】',
-                '問1  [ ア ・ イ ・ ウ ・ エ ・ オ ]',
-                '問2  [                    ]',
-                '問3  [                    ]',
-                '問4  [                    ]'
-            ])];
-
-            renderImagePreviews('question');
-            renderImagePreviews('answer');
-            showToast('ミス・不整合を含んだテスト画像を生成してセットしました。「校正チェックを実行する」を押してください。', 'info');
+        // 括弧の閉じ忘れチェック（問題用紙・解答用紙それぞれ）
+        [
+          { label: '問題用紙', text: fullQ },
+          { label: '解答用紙', text: fullA }
+        ].forEach(sheet => {
+          if (!sheet.text) return;
+          const openParens = (sheet.text.match(/（|\(/g) || []).length;
+          const closeParens = (sheet.text.match(/）|\)/g) || []).length;
+          if (openParens !== closeParens) {
+            issues.push({
+              level: 'error',
+              category: `書式・括弧ミス（${sheet.label}）`,
+              detail: `${sheet.label}の丸括弧の数が一致していません（開き括弧: ${openParens}個 / 閉じ括弧: ${closeParens}個）。`
+            });
+          }
         });
 
-        // ==========================================
-        // ブラウザ内OCR（Tesseract.js）＆ローカル高精度校正エンジン
-        // ==========================================
-        async function extractTextFromImages(images, sideLabel) {
-            if (!images || images.length === 0) return '';
-            const loadingSub = document.getElementById('loadingSubtitle');
-            let extractedBlocks = [];
+        // 2. 設問パースと大問ごとの連番・重複チェック
+        const qItems = parseQuestionsFromText(fullQ);
+        const aItems = parseQuestionsFromText(fullA);
 
-            for (let i = 0; i < images.length; i++) {
-                const img = images[i];
-                if (loadingSub) {
-                    loadingSub.textContent = `${sideLabel}の画像 (${i + 1}/${images.length}枚目) から文字を読み取っています（初回は日本語辞書データを読み込みます）...`;
-                }
-                if (typeof Tesseract !== 'undefined') {
-                    const worker = await Tesseract.createWorker('jpn+eng');
-                    const ret = await worker.recognize(img.dataUrl);
-                    await worker.terminate();
-                    const cleanedText = (ret.data.text || '').trim();
-                    if (cleanedText) {
-                        extractedBlocks.push(`【画像${i + 1}枚目: ${img.name}】\n${cleanedText}`);
-                    }
-                }
+        const sections = [...new Set([...qItems.map(i => i.section), ...aItems.map(i => i.section)])];
+        sections.forEach(sec => {
+          const secQs = qItems.filter(i => i.section === sec);
+          const seen = new Set();
+          let expected = 1;
+          secQs.forEach(item => {
+            if (seen.has(item.num)) {
+              issues.push({
+                level: 'error',
+                category: '設問番号の重複',
+                detail: `問題用紙の「${sec} 問${item.num}」が重複しています。`
+              });
             }
-            return extractedBlocks.join('\n\n');
-        }
-
-        function parseQuestionsFromText(text) {
-            const lines = text.split('\n');
-            let currentMajor = '大問1';
-            let currentMajorEachPoints = null;
-            const items = [];
-            let currentItem = null;
-
-            const majorRegex = /(?:【\s*(?:大問)?\s*([0-9０-９一二三四五六七八九十]+)\s*】|^\s*([1-9１-９])\s*[．.．\s　]+(?:次の|以下の|下の))/;
-            const subRegex = /(?:問\s*([0-9０-９]+)|[\(（]\s*([0-9０-９]+)\s*[\)）])/;
-
-            const toHalfNum = (s) => s.replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0));
-
-            lines.forEach((rawLine, idx) => {
-                const line = rawLine.trim();
-                if (!line) return;
-
-                const majorMatch = line.match(majorRegex);
-                if (majorMatch && !line.startsWith('問')) {
-                    const num = majorMatch[1] || majorMatch[2];
-                    currentMajor = `大問${toHalfNum(num)}`;
-                    const eachMatch = line.match(/各\s*([0-9０-９]+)\s*点/);
-                    currentMajorEachPoints = eachMatch ? parseInt(toHalfNum(eachMatch[1]), 10) : null;
-                }
-
-                const subMatch = line.match(subRegex);
-                if (subMatch) {
-                    if (currentItem) items.push(currentItem);
-                    const qNumRaw = subMatch[1] || subMatch[2];
-                    const qNum = parseInt(toHalfNum(qNumRaw), 10);
-                    currentItem = {
-                        major: currentMajor,
-                        qNum,
-                        id: `${currentMajor} - 問${qNum}`,
-                        lineNum: idx + 1,
-                        rawLines: [line],
-                        choices: [],
-                        points: currentMajorEachPoints,
-                        hasBlankBox: /[\[［【\(\(']\s*[\]］】\)\）]/.test(line)
-                    };
-                } else if (currentItem) {
-                    currentItem.rawLines.push(line);
-                }
-
-                if (currentItem) {
-                    // 選択肢の抽出 (ア〜オ, A〜E, 1〜5)
-                    const choiceMatches = line.match(/[ア-オA-E](?=[\s．.・\]］\)]|$)/g);
-                    if (choiceMatches) {
-                        choiceMatches.forEach(c => {
-                            if (!currentItem.choices.includes(c)) currentItem.choices.push(c);
-                        });
-                    }
-                    // 配点の抽出（個別配点が書ければ大問の「各〇点」を上書き）
-                    const ptMatch = line.match(/(?:配点\s*)?([0-9０-９]+)\s*点/);
-                    if (ptMatch) {
-                        currentItem.points = parseInt(toHalfNum(ptMatch[1]), 10);
-                    }
-                }
-            });
-
-            if (currentItem) items.push(currentItem);
-            return items;
-        }
-
-        async function runLocalProofreader(qText, aText, qImgs, aImgs, options) {
-            const ocrQText = await extractTextFromImages(qImgs, '問題用紙');
-            const ocrAText = await extractTextFromImages(aImgs, '解答用紙');
-
-            const combinedQText = [qText, ocrQText].filter(Boolean).join('\n\n');
-            const combinedAText = [aText, ocrAText].filter(Boolean).join('\n\n');
-
-            const qItems = parseQuestionsFromText(combinedQText);
-            const aItems = parseQuestionsFromText(combinedAText);
-
-            const issues = [];
-            const comparisonTable = [];
-
-            // 1. 誤字脱字・表記ゆれ・括弧・図表チェック
-            if (options.typos) {
-                const typoRules = [
-                    { regex: /選らび/g, cat: '誤字・送り仮名', sev: 'error', desc: '「選らび」は送り仮名の誤りです。', sug: '「選び」に修正してください。' },
-                    { regex: /次ぎの/g, cat: '誤字・送り仮名', sev: 'error', desc: '「次ぎの」は送り仮名の誤りです。', sug: '「次の」に修正してください。' },
-                    { regex: /回答用紙/g, cat: '用語の誤用', sev: 'warning', desc: 'テストの答案を記入する用紙は「解答用紙」と表記するのが一般的です。', sug: '「解答用紙」に修正することを推奨します。' },
-                    { regex: /ななさい|くください|ししなさい/g, cat: '文字の重複', sev: 'error', desc: '語尾の文字が重複しています。', sug: '重複している1文字を削除してください。' },
-                    { regex: /すべて選べ|すべて選びなさい/g, cat: '出題形式の確認', sev: 'info', desc: '複数選択問題です。完全解答（完答）か部分点ありかを明記すると親切です。', sug: '必要に応じて「（完答）」などの表記を検討してください。' }
-                ];
-
-                const checkTextBlocks = [
-                    { label: '問題用紙', text: combinedQText },
-                    { label: '解答用紙', text: combinedAText }
-                ];
-
-                checkTextBlocks.forEach(block => {
-                    if (!block.text) return;
-                    const lines = block.text.split('\n');
-                    lines.forEach((line, idx) => {
-                        typoRules.forEach(rule => {
-                            if (rule.regex.test(line)) {
-                                issues.push({
-                                    severity: rule.sev,
-                                    category: rule.cat,
-                                    location: `${block.label} ${idx + 1}行目`,
-                                    description: rule.desc,
-                                    excerpt: line.trim(),
-                                    suggestion: rule.sug
-                                });
-                            }
-                            rule.regex.lastIndex = 0;
-                        });
-
-                        // 括弧の閉じ忘れチェック
-                        const openParens = (line.match(/（/g) || []).length;
-                        const closeParens = (line.match(/）/g) || []).length;
-                        if (openParens !== closeParens) {
-                            issues.push({
-                                severity: 'error',
-                                category: '括弧の閉じ忘れ',
-                                location: `${block.label} ${idx + 1}行目`,
-                                description: `全角括弧「（」(${openParens}個) と「）」(${closeParens}個) の数が一致していません。`,
-                                excerpt: line.trim(),
-                                suggestion: '対応する閉じ括弧「）」を補ってください。'
-                            });
-                        }
-                    });
-
-                    // 図番号の参照チェック（例：本文に「図2」があるのに「図1」しかない）
-                    const figRefs = [...block.text.matchAll(/図\s*([1-9１-９])/g)].map(m => m[1]);
-                    const uniqueFigs = [...new Set(figRefs)];
-                    if (uniqueFigs.includes('2') && !uniqueFigs.includes('1')) {
-                        issues.push({
-                            severity: 'error',
-                            category: '図表番号のずれ',
-                            location: `${block.label}`,
-                            description: '本文中で「図2」が参照されていますが、「図1」が見当たりません。',
-                            excerpt: '図2の参照あり / 図1が未検出',
-                            suggestion: '図番号を「図1」に修正するか、図1が欠落していないか確認してください。'
-                        });
-                    }
-                });
-            }
-
-            // 4. 目標合計点（満点）との配点照合チェック
-            if (options.checkTotalScore && options.targetScore > 0) {
-                const checkSheetTotalScore = (items, sideName) => {
-                    if (items.length === 0) return;
-                    const scoredItems = items.filter(it => it.points !== null);
-                    const unscoredItems = items.filter(it => it.points === null);
-                    const total = scoredItems.reduce((sum, it) => sum + it.points, 0);
-
-                    if (scoredItems.length === 0) {
-                        issues.push({
-                            severity: 'warning',
-                            category: '配点記載なし・合計点未達',
-                            location: `${sideName} 全体配点`,
-                            description: `${sideName}から個別の配点（〇点）が読み取れませんでした。目標の ${options.targetScore} 点満点になっているか確認できません。`,
-                            excerpt: `目標合計点: ${options.targetScore}点 / 検出された配点合計: 0点（配点表記なし）`,
-                            suggestion: `各設問または大問に「（〇点）」「（各〇点）」の形式で配点を明記してください。`
-                        });
-                    } else if (total !== options.targetScore || unscoredItems.length > 0) {
-                        const diff = total - options.targetScore;
-                        const diffText = diff > 0 ? `${diff}点オーバー` : diff < 0 ? `${Math.abs(diff)}点不足` : '合計は一致（配点未記載の小問あり）';
-                        const missingNote = unscoredItems.length > 0
-                            ? `（なお、${unscoredItems.map(u => u.id).join('、')} には配点記載がありません）`
-                            : '';
-                        issues.push({
-                            severity: 'warning',
-                            category: '合計点の不一致',
-                            location: `${sideName} 全体配点`,
-                            description: `${sideName}の配点合計は「${total}点」であり、設定された目標合計点「${options.targetScore}点」と一致しません（${diffText}）。${missingNote}`,
-                            excerpt: `目標: ${options.targetScore}点 ≠ 現在の合計: ${total}点（${scoredItems.map(s => `${s.id}:${s.points}点`).join(' + ')}）`,
-                            suggestion: diff < 0
-                                ? `残り ${Math.abs(diff)} 点分の配点を追加するか、各設問の配点を調整して合計 ${options.targetScore} 点にしてください。`
-                                : diff > 0
-                                ? `${diff} 点分超過しているため、各設問の配点を減らして合計 ${options.targetScore} 点に調整してください。`
-                                : `配点が未記載の設問に配点を追記し、合計 ${options.targetScore} 点になるよう確認してください。`
-                        });
-                    }
-                };
-
-                if (combinedQText) checkSheetTotalScore(qItems, '問題用紙');
-                if (combinedAText) checkSheetTotalScore(aItems, '解答用紙');
-            }
-
-            // 設問番号の対応比較表を作成
-            const allQNums = [...new Set([...qItems.map(i => i.id), ...aItems.map(i => i.id)])];
-            allQNums.sort();
-            allQNums.forEach(qid => {
-                const qFound = qItems.find(i => i.id === qid);
-                const aFound = aItems.find(i => i.id === qid);
-                if (qFound && aFound) {
-                    comparisonTable.push({
-                        questionId: qid,
-                        status: 'ok',
-                        statusLabel: '一致 OK',
-                        questionSummary: qFound.rawLines.join(' / '),
-                        answerSummary: aFound.rawLines.join(' / ')
-                    });
-                } else if (qFound && !aFound) {
-                    comparisonTable.push({
-                        questionId: qid,
-                        status: 'missing_answer',
-                        statusLabel: '解答欄なし',
-                        questionSummary: qFound.rawLines.join(' / '),
-                        answerSummary: '【該当する解答欄がありません】'
-                    });
-                    issues.push({
-                        severity: 'error',
-                        category: '解答欄の欠落',
-                        location: qid,
-                        description: `問題用紙に「${qid}」がありますが、解答用紙側に対応する解答欄が見当たりません。`,
-                        excerpt: qFound.rawLines[0],
-                        suggestion: '解答用紙に該当する設問の解答欄を追加してください。'
-                    });
-                } else if (!qFound && aFound) {
-                    comparisonTable.push({
-                        questionId: qid,
-                        status: 'missing_question',
-                        statusLabel: '問題文なし',
-                        questionSummary: '【対応する問題文が見つかりません】',
-                        answerSummary: aFound.rawLines.join(' / ')
-                    });
-                    issues.push({
-                        severity: 'warning',
-                        category: '余分な解答欄',
-                        location: qid,
-                        description: `解答用紙に「${qid}」の解答欄がありますが、問題用紙側に対応する設問が見当たりません。`,
-                        excerpt: aFound.rawLines[0],
-                        suggestion: '解答用紙の設問番号を確認するか、問題文を追記してください。'
-                    });
-                }
-            });
-
-            if (!combinedQText || !combinedAText) {
-                issues.push({
-                    severity: 'info',
-                    category: '片側のみ入力',
-                    location: '全体チェック',
-                    description: !combinedQText ? '問題用紙が未入力のため、解答用紙単体のチェックを行いました。' : '解答用紙が未入力のため、問題用紙単体のチェックを行いました。',
-                    excerpt: '両方の用紙を入力すると設問・解答欄の照合が行えます。',
-                    suggestion: 'もう片方の用紙もテキストまたは画像で追加して再チェックしてください。'
-                });
-            }
-
-            const errorCnt = issues.filter(i => i.severity === 'error').length;
-            const summary = issues.length === 0
-                ? '問題用紙と解答用紙を照合した結果、明らかな誤字や設問番号・解答欄の不整合は検出されませんでした。'
-                : `問題用紙と解答用紙を解析した結果、合計 ${issues.length} 件の指摘事項（うち要修正 ${errorCnt} 件）が見つかりました。印刷前に該当箇所をご確認ください。`;
-
-            return { summary, issues, comparisonTable };
-        }
-
-        // ==========================================
-        // Gemini API マルチモーダル校正リクエスト（APIキー設定時のみ使用）
-        // ==========================================
-        async function callGeminiProofreader(qText, aText, qImgs, aImgs, options) {
-            if (!userGeminiApiKey) {
-                return await runLocalProofreader(qText, aText, qImgs, aImgs, options);
-            }
-
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(userGeminiApiKey)}`;
-
-            const systemPrompt = `あなたは日本の学校・塾の経験豊富な教務主任およびテスト校正のプロフェッショナルです。
-提出された「テスト問題用紙（テキストおよび/または画像）」と「解答用紙（テキストおよび/または画像）」を精密に読み取り、印刷前に修正すべきミス・不整合・改善点をすべて洗い出してください。
-
-【重点検査項目】
-1. **問題用紙と解答用紙の整合性（最重要）**:
-   - 設問番号の不一致（問題用紙にある設問が解答用紙にない、またはその逆）
-   - 解答欄の形式の不一致（問題文は記号選択「ア〜エ」なのに解答欄が記述枠になっている、または選択肢の個数・記号が「ア〜エ」と「ア〜オ」のようにずれている）
-   - 記述欄の大きさ・枠数の不整合（「漢字2字で答えなさい」なのに枠が1つしかない等）
-   - 配点の不一致や合計点の計算ミス
-2. **問題文・解答用紙のミス・誤字脱字**:
-   - 漢字の変換ミス・同音異義語の誤り（「回答用紙」→「解答用紙」など）
-   - 送り仮名の誤り・文字重複（「選らびなさい」「次ぎの」「〜ななさい」など）
-   - 括弧（ ）「 」【 】の閉じ忘れ・全角半角の不統一
-   - 図表や資料の参照番号のずれ（本文で「図2」と参照しているのに「図1」しかない等）
-3. **設問番号の連番・重複**:
-   - 大問ごとの小問番号の飛び（例：問1, 問2, 問4）や重複（例：(1), (2), (2)）
-
-【有効な検査オプション】
-- 誤字脱字・表記ゆれ・図表参照チェック: ${options.typos ? '有効' : '無効'}
-- 設問番号の連番・重複チェック: ${options.sequence ? '有効' : '無効'}
-- 問題と解答用紙の整合性・配点チェック: ${options.consistency ? '有効' : '無効'}
-- 目標合計点（満点）との配点照合チェック: ${options.checkTotalScore && options.targetScore > 0 ? `有効（目標合計点: ${options.targetScore}点満点。問題用紙・解答用紙それぞれの全設問の配点を合算し、${options.targetScore}点と一致しない場合は severity: "warning" で過不足点数と内訳を警告すること）` : '無効'}
-
-【出力ルール】
-- 必ず指定されたJSONスキーマに従って日本語で出力してください。
-- 画像が添付されている場合は、画像内のすべての文字・記号・選択肢・枠組みを正確に読み取って検証してください。
-- 片方（問題用紙のみ、または解答用紙のみ）しか入力されていない場合は、入力されている側の誤字脱字・番号連番・出題上の不備を検査し、もう片方が未入力である旨を1件のinfoとして補足してください。
-- comparisonTable には、大問・小問ごとの対応一覧を漏れなく作成してください。`;
-
-            // ユーザーパーツの組み立て（テキストと画像を明確にラベル分けして渡す）
-            const parts = [];
-            parts.push({ text: "以下のテスト問題用紙と解答用紙のデータを校正してください。\n\n=== 【1. 問題用紙データ】 ===" });
-            if (qText) {
-                parts.push({ text: `[問題用紙テキスト]\n${qText}` });
-            } else if (qImgs.length === 0) {
-                parts.push({ text: "（問題用紙の入力なし）" });
-            }
-            qImgs.forEach((img, idx) => {
-                parts.push({ text: `[問題用紙 画像 ${idx + 1}ページ目: ${img.name}]` });
-                parts.push({
-                    inlineData: {
-                        mimeType: img.mimeType,
-                        data: img.base64
-                    }
-                });
-            });
-
-            parts.push({ text: "\n=== 【2. 解答用紙データ】 ===" });
-            if (aText) {
-                parts.push({ text: `[解答用紙テキスト]\n${aText}` });
-            } else if (aImgs.length === 0) {
-                parts.push({ text: "（解答用紙の入力なし）" });
-            }
-            aImgs.forEach((img, idx) => {
-                parts.push({ text: `[解答用紙 画像 ${idx + 1}ページ目: ${img.name}]` });
-                parts.push({
-                    inlineData: {
-                        mimeType: img.mimeType,
-                        data: img.base64
-                    }
-                });
-            });
-
-            const payload = {
-                contents: [{ role: "user", parts }],
-                systemInstruction: {
-                    parts: [{ text: systemPrompt }]
-                },
-                generationConfig: {
-                    responseMimeType: "application/json",
-                    responseSchema: {
-                        type: "OBJECT",
-                        properties: {
-                            summary: {
-                                type: "STRING",
-                                description: "全体の校正結果の総評（2〜3文程度）"
-                            },
-                            issues: {
-                                type: "ARRAY",
-                                description: "検出されたミス・不整合・改善点のリスト",
-                                items: {
-                                    type: "OBJECT",
-                                    properties: {
-                                        severity: {
-                                            type: "STRING",
-                                            enum: ["error", "warning", "info"],
-                                            description: "error: 必ず修正すべきミス・不整合, warning: 確認推奨の表記ゆれや形式違い, info: より良い問題にするための提案"
-                                        },
-                                        category: {
-                                            type: "STRING",
-                                            description: "カテゴリ名（例：解答欄の欠落、選択肢の不一致、誤字・送り仮名、括弧閉じ忘れ、設問番号の抜け、図表参照ずれ、配点不整合 など）"
-                                        },
-                                        location: {
-                                            type: "STRING",
-                                            description: "対象箇所（例：問題用紙 画像1枚目 問1、解答用紙 5行目、問題用紙と解答用紙の比較 大問1-問3 など）"
-                                        },
-                                        description: {
-                                            type: "STRING",
-                                            description: "問題点の詳細な説明"
-                                        },
-                                        excerpt: {
-                                            type: "STRING",
-                                            description: "該当箇所の原文抜粋や読み取り内容の比較"
-                                        },
-                                        suggestion: {
-                                            type: "STRING",
-                                            description: "具体的な修正案"
-                                        }
-                                    },
-                                    required: ["severity", "category", "location", "description", "excerpt", "suggestion"]
-                                }
-                            },
-                            comparisonTable: {
-                                type: "ARRAY",
-                                description: "設問ごとの問題用紙と解答用紙の対比一覧",
-                                items: {
-                                    type: "OBJECT",
-                                    properties: {
-                                        questionId: {
-                                            type: "STRING",
-                                            description: "大問・小問ID（例：大問1 - 問1）"
-                                        },
-                                        status: {
-                                            type: "STRING",
-                                            enum: ["ok", "mismatch", "missing_answer", "missing_question"],
-                                            description: "ok: 一致, mismatch: 選択肢数や形式・配点にずれあり, missing_answer: 解答欄なし, missing_question: 問題なし"
-                                        },
-                                        statusLabel: {
-                                            type: "STRING",
-                                            description: "判定バッジの短いラベル（例：一致 OK、選択肢ずれ、形式不一致、解答欄なし、問題なし）"
-                                        },
-                                        questionSummary: {
-                                            type: "STRING",
-                                            description: "問題用紙側の設問内容・選択肢・配点の要約"
-                                        },
-                                        answerSummary: {
-                                            type: "STRING",
-                                            description: "解答用紙側の解答欄形式・選択肢・配点の要約"
-                                        }
-                                    },
-                                    required: ["questionId", "status", "statusLabel", "questionSummary", "answerSummary"]
-                                }
-                            }
-                        },
-                        required: ["summary", "issues", "comparisonTable"]
-                    }
-                }
-            };
-
-            // 指数バックオフ付きフェッチ
-            const maxRetries = 3;
-            let delay = 1000;
-            for (let attempt = 0; attempt <= maxRetries; attempt++) {
-                try {
-                    const response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-
-                    if (!response.ok) {
-                        if ((response.status === 429 || response.status >= 500) && attempt < maxRetries) {
-                            await new Promise(r => setTimeout(r, delay));
-                            delay *= 2;
-                            continue;
-                        }
-                        if (response.status === 401 || response.status === 403) {
-                            showToast('APIキー認証に失敗したため、内蔵OCR＆ルール校正エンジンに自動で切り替えて解析しました。', 'warning');
-                            return await runLocalProofreader(qText, aText, qImgs, aImgs, options);
-                        }
-                        throw new Error(`APIエラー (${response.status})`);
-                    }
-
-                    const result = await response.json();
-                    const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-                    if (!text) {
-                        throw new Error('AIからの応答が空でした。');
-                    }
-                    return JSON.parse(text);
-                } catch (err) {
-                    if (attempt === maxRetries) throw err;
-                    await new Promise(r => setTimeout(r, delay));
-                    delay *= 2;
-                }
-            }
-        }
-
-        // ==========================================
-        // 結果のレンダリング処理
-        // ==========================================
-        function renderResults(data) {
-            currentIssues = data.issues || [];
-            currentSummary = data.summary || '';
-            const comparisonRows = data.comparisonTable || [];
-
-            // 重大度順にソート（error -> warning -> info）
-            const severityOrder = { error: 0, warning: 1, info: 2 };
-            currentIssues.sort((a, b) => (severityOrder[a.severity] ?? 9) - (severityOrder[b.severity] ?? 9));
-
-            currentFilter = 'all';
-            updateFilterButtons();
-
-            const errorCount = currentIssues.filter(i => i.severity === 'error').length;
-            const warningCount = currentIssues.filter(i => i.severity === 'warning').length;
-            const infoCount = currentIssues.filter(i => i.severity === 'info').length;
-
-            totalIssuesCount.innerHTML = `${currentIssues.length}<span class="text-base font-normal text-slate-500 ml-1">件</span>`;
-            errorIssuesCount.innerHTML = `${errorCount}<span class="text-base font-normal text-red-400 ml-1">件</span>`;
-            warningIssuesCount.innerHTML = `${warningCount}<span class="text-base font-normal text-amber-400 ml-1">件</span>`;
-            infoIssuesCount.innerHTML = `${infoCount}<span class="text-base font-normal text-sky-400 ml-1">件</span>`;
-
-            if (currentSummary) {
-                aiSummaryText.textContent = currentSummary;
-                aiSummaryBox.classList.remove('hidden');
+            seen.add(item.num);
+            if (item.num !== expected) {
+              issues.push({
+                level: 'error',
+                category: '設問番号の抜け・飛び',
+                detail: `問題用紙の「${sec}」で設問番号が飛んでいます（問${expected}の代わりに問${item.num}が出現）。`
+              });
+              expected = item.num + 1;
             } else {
-                aiSummaryBox.classList.add('hidden');
+              expected++;
             }
-
-            renderIssuesList();
-            renderComparisonTable(comparisonRows);
-
-            resultsSection.classList.remove('hidden');
-            resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-
-        function filterIssues(type) {
-            currentFilter = type;
-            updateFilterButtons();
-            renderIssuesList();
-        }
-
-        function updateFilterButtons() {
-            const btnAll = document.getElementById('filterAll');
-            const btnErr = document.getElementById('filterError');
-            const btnWarn = document.getElementById('filterWarning');
-            const btnInfo = document.getElementById('filterInfo');
-
-            [btnAll, btnErr, btnWarn, btnInfo].forEach(btn => {
-                btn.className = 'px-3 py-1.5 rounded-lg font-medium bg-slate-200 text-slate-700 hover:bg-slate-300 transition';
-            });
-
-            if (currentFilter === 'all') btnAll.className = 'px-3 py-1.5 rounded-lg font-medium bg-slate-800 text-white transition';
-            if (currentFilter === 'error') btnErr.className = 'px-3 py-1.5 rounded-lg font-medium bg-red-600 text-white transition';
-            if (currentFilter === 'warning') btnWarn.className = 'px-3 py-1.5 rounded-lg font-medium bg-amber-500 text-white transition';
-            if (currentFilter === 'info') btnInfo.className = 'px-3 py-1.5 rounded-lg font-medium bg-sky-600 text-white transition';
-        }
-
-        function renderIssuesList() {
-            const filtered = currentIssues.filter(issue => {
-                if (currentFilter === 'all') return true;
-                return issue.severity === currentFilter;
-            });
-
-            if (filtered.length === 0) {
-                issuesListContainer.innerHTML = `
-                    <div class="p-10 text-center">
-                        <div class="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3">
-                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                            </svg>
-                        </div>
-                        <p class="text-base font-bold text-slate-800">該当する指摘事項は見つかりませんでした</p>
-                        <p class="text-sm text-slate-500 mt-1">選択された条件での問題点は検出されませんでした。</p>
-                    </div>
-                `;
-                return;
-            }
-
-            issuesListContainer.innerHTML = filtered.map(issue => {
-                let badgeHtml = '';
-                let borderAccent = '';
-
-                if (issue.severity === 'error') {
-                    badgeHtml = `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs font-bold bg-red-100 text-red-700 border border-red-200">要修正 (Error)</span>`;
-                    borderAccent = 'border-l-4 border-l-red-500';
-                } else if (issue.severity === 'warning') {
-                    badgeHtml = `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">確認推奨 (Warning)</span>`;
-                    borderAccent = 'border-l-4 border-l-amber-400';
-                } else {
-                    badgeHtml = `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs font-bold bg-sky-100 text-sky-800 border border-sky-200">改善提案 (Info)</span>`;
-                    borderAccent = 'border-l-4 border-l-sky-400';
-                }
-
-                return `
-                    <div class="p-5 hover:bg-slate-50/80 transition ${borderAccent}">
-                        <div class="flex flex-wrap items-center gap-2 mb-2">
-                            ${badgeHtml}
-                            <span class="text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded-md">${escapeHtml(issue.category)}</span>
-                            <span class="text-xs font-medium text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-md border border-blue-100">📍 ${escapeHtml(issue.location)}</span>
-                        </div>
-                        <p class="text-sm font-bold text-slate-800 mb-1.5">${escapeHtml(issue.description)}</p>
-                        ${issue.excerpt ? `
-                        <div class="bg-slate-100/80 rounded-lg p-2.5 text-xs text-slate-600 font-mono mb-2 border border-slate-200/70 break-all">
-                            該当箇所: ${escapeHtml(issue.excerpt)}
-                        </div>` : ''}
-                        <div class="flex items-start gap-1.5 text-xs text-emerald-700 font-medium">
-                            <span class="shrink-0 mt-0.5">💡 修正案:</span>
-                            <span>${escapeHtml(issue.suggestion)}</span>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        function renderComparisonTable(rows) {
-            if (!rows || rows.length === 0) {
-                comparisonTableBody.innerHTML = `
-                    <tr>
-                        <td colspan="4" class="py-8 text-center text-slate-500 text-sm">
-                            設問番号の対比データは抽出されませんでした。
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
-
-            comparisonTableBody.innerHTML = rows.map(row => {
-                let statusBadge = '';
-                let rowBg = '';
-
-                if (row.status === 'ok') {
-                    statusBadge = `<span class="inline-block px-2 py-0.5 text-xs font-bold rounded bg-emerald-100 text-emerald-700">${escapeHtml(row.statusLabel || '一致 OK')}</span>`;
-                } else {
-                    statusBadge = `<span class="inline-block px-2 py-0.5 text-xs font-bold rounded bg-red-100 text-red-700">${escapeHtml(row.statusLabel || '不整合あり')}</span>`;
-                    rowBg = 'bg-red-50/40';
-                }
-
-                return `
-                    <tr class="${rowBg} hover:bg-slate-50 transition">
-                        <td class="py-3 px-4 font-bold text-slate-800 align-top whitespace-nowrap">${escapeHtml(row.questionId)}</td>
-                        <td class="py-3 px-4 text-center align-top whitespace-nowrap">${statusBadge}</td>
-                        <td class="py-3 px-4 align-top text-slate-700">${escapeHtml(row.questionSummary)}</td>
-                        <td class="py-3 px-4 align-top text-slate-700">${escapeHtml(row.answerSummary)}</td>
-                    </tr>
-                `;
-            }).join('');
-        }
-
-        // 校正レポートのクリップボードコピー
-        copyReportBtn.addEventListener('click', () => {
-            if (currentIssues.length === 0 && !currentSummary) {
-                showToast('コピーする校正結果がありません。', 'warning');
-                return;
-            }
-
-            const lines = [];
-            lines.push('【TEST-TEST. 校正チェック結果】');
-            if (currentSummary) lines.push(`■ AI総評: ${currentSummary}\n`);
-            lines.push(`■ 指摘事項（全${currentIssues.length}件）`);
-            currentIssues.forEach((iss, i) => {
-                const sev = iss.severity === 'error' ? '【要修正】' : iss.severity === 'warning' ? '【確認推奨】' : '【改善提案】';
-                lines.push(`${i + 1}. ${sev}[${iss.category}] ${iss.location}`);
-                lines.push(`   内容: ${iss.description}`);
-                if (iss.excerpt) lines.push(`   該当: ${iss.excerpt}`);
-                lines.push(`   修正案: ${iss.suggestion}`);
-            });
-
-            const tempArea = document.createElement('textarea');
-            tempArea.value = lines.join('\n');
-            document.body.appendChild(tempArea);
-            tempArea.select();
-            document.execCommand('copy');
-            document.body.removeChild(tempArea);
-
-            showToast('校正結果レポートをクリップボードにコピーしました。', 'success');
+          });
         });
 
-        // XSS対策エスケープ
-        function escapeHtml(str) {
-            if (!str) return '';
-            return String(str)
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#039;');
+        // 3. 問題用紙と解答用紙の照合
+        const allKeys = [...new Set([...qItems.map(i => i.key), ...aItems.map(i => i.key)])];
+        const compRows = [];
+
+        allKeys.forEach(key => {
+          const q = qItems.find(i => i.key === key);
+          const a = aItems.find(i => i.key === key);
+
+          let statusHtml = '<span class="px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-xs font-bold">OK</span>';
+
+          if (q && !a) {
+            issues.push({
+              level: 'error',
+              category: '解答欄の欠落',
+              detail: `問題用紙にある「${key}」の解答欄が解答用紙に見当たりません。`
+            });
+            statusHtml = '<span class="px-2.5 py-0.5 rounded-md bg-rose-100 text-rose-800 text-xs font-bold">解答欄なし</span>';
+          } else if (!q && a) {
+            issues.push({
+              level: 'error',
+              category: '不要な解答欄',
+              detail: `解答用紙にある「${key}」に対応する問題文が問題用紙に見当たりません。`
+            });
+            statusHtml = '<span class="px-2.5 py-0.5 rounded-md bg-rose-100 text-rose-800 text-xs font-bold">問題なし</span>';
+          } else if (q && a) {
+            // 選択肢の比較
+            if (q.choices.length > 0 || a.choices.length > 0) {
+              const qCh = q.choices.join('・');
+              const aCh = a.choices.join('・');
+              if (qCh !== aCh) {
+                issues.push({
+                  level: 'error',
+                  category: '選択肢のずれ',
+                  detail: `「${key}」の選択肢が一致しません（問題用紙: [${qCh || 'なし'}] / 解答用紙: [${aCh || 'なし'}]）。`
+                });
+                statusHtml = '<span class="px-2.5 py-0.5 rounded-md bg-amber-100 text-amber-800 text-xs font-bold">選択肢ずれ</span>';
+              }
+            }
+            // 配点の比較
+            if (q.points !== null && a.points !== null && q.points !== a.points) {
+              issues.push({
+                level: 'warn',
+                category: '配点の不一致',
+                detail: `「${key}」の配点が問題用紙（${q.points}点）と解答用紙（${a.points}点）で異なります。`
+              });
+              statusHtml = '<span class="px-2.5 py-0.5 rounded-md bg-amber-100 text-amber-800 text-xs font-bold">配点不一致</span>';
+            }
+          }
+
+          compRows.push({
+            key,
+            qText: q ? `${q.choices.length ? '選択[' + q.choices.join('・') + '] ' : '記述 '}${q.points !== null ? '(' + q.points + '点)' : ''}` : '—',
+            aText: a ? `${a.choices.length ? '選択[' + a.choices.join('・') + '] ' : '記述枠 '}${a.points !== null ? '(' + a.points + '点)' : ''}` : '—',
+            statusHtml
+          });
+        });
+
+        // 4. 目標合計点（満点）チェック
+        if (el.chkScore.checked) {
+          const targetTotal = parseInt(el.inputScore.value, 10) || 100;
+          const sumQ = qItems.reduce((acc, cur) => acc + (cur.points || 0), 0);
+          const sumA = aItems.reduce((acc, cur) => acc + (cur.points || 0), 0);
+
+          if (qItems.length > 0 && sumQ !== targetTotal) {
+            const diff = targetTotal - sumQ;
+            issues.push({
+              level: 'warn',
+              category: '目標合計点との不一致（問題用紙）',
+              detail: `目標合計点は ${targetTotal}点 ですが、問題用紙から読み取れた配点の合計は ${sumQ}点 です（${diff > 0 ? diff + '点不足' : Math.abs(diff) + '点超過'}）。`
+            });
+          }
+          if (aItems.length > 0 && sumA !== targetTotal) {
+            const diff = targetTotal - sumA;
+            issues.push({
+              level: 'warn',
+              category: '目標合計点との不一致（解答用紙）',
+              detail: `目標合計点は ${targetTotal}点 ですが、解答用紙から読み取れた配点の合計は ${sumA}点 です（${diff > 0 ? diff + '点不足' : Math.abs(diff) + '点超過'}）。`
+            });
+          }
         }
 
-        // ==========================================
-        // メイン実行イベント
-        // ==========================================
-        runCheckBtn.addEventListener('click', async () => {
-            const qText = questionInput.value.trim();
-            const aText = answerInput.value.trim();
-            const hasAnyInput = qText || aText || questionImages.length > 0 || answerImages.length > 0;
+        renderResults(issues, compRows);
+        el.progressBar.style.width = '100%';
+        showToast('校正・整合性チェックが完了しました');
+      } catch (err) {
+        console.error(err);
+        showToast('解析中にエラーが発生しました: ' + err.message);
+      } finally {
+        setTimeout(() => {
+          el.progressBox.classList.add('hidden');
+          el.btnCheck.disabled = false;
+        }, 300);
+      }
+    });
 
-            if (!hasAnyInput) {
-                showToast('問題用紙または解答用紙のテキストや画像を入力してください。', 'warning');
-                return;
-            }
+    // ==========================================
+    // 結果レポートの描画処理
+    // ==========================================
+    function renderResults(issues, compRows) {
+      el.resultSection.classList.remove('hidden');
 
-            // UIをローディング状態にする
-            runCheckBtn.disabled = true;
-            document.getElementById('runBtnText').textContent = 'AI解析中...';
-            resultsSection.classList.add('hidden');
-            loadingSection.classList.remove('hidden');
-            loadingSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const errorCount = issues.filter(i => i.level === 'error').length;
+      const warnCount = issues.filter(i => i.level === 'warn').length;
 
-            try {
-                const parsedTargetScore = parseInt(targetScoreInput.value, 10);
-                const options = {
-                    typos: optTypos.checked,
-                    sequence: optSequence.checked,
-                    consistency: optConsistency.checked,
-                    checkTotalScore: optTotalScore.checked,
-                    targetScore: Number.isFinite(parsedTargetScore) && parsedTargetScore > 0 ? parsedTargetScore : 100
-                };
+      el.summaryBadges.innerHTML = `
+        <span class="px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800">要修正: ${errorCount}件</span>
+        <span class="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800">確認推奨: ${warnCount}件</span>
+      `;
 
-                const aiResult = await callGeminiProofreader(qText, aText, questionImages, answerImages, options);
-                renderResults(aiResult);
+      if (issues.length === 0) {
+        el.issuesList.innerHTML = `
+          <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-medium">
+            問題は見つかりませんでした！問題用紙と解答用紙の整合性は取れています。
+          </div>
+        `;
+      } else {
+        el.issuesList.innerHTML = issues.map(issue => {
+          const isErr = issue.level === 'error';
+          return `
+            <div class="p-4 rounded-xl border ${isErr ? 'bg-rose-50 border-rose-200' : 'bg-amber-50 border-amber-200'} flex items-start gap-3">
+              <span class="px-2.5 py-0.5 rounded-md text-xs font-bold shrink-0 mt-0.5 ${isErr ? 'bg-rose-600 text-white' : 'bg-amber-500 text-white'}">
+                ${isErr ? '要修正' : '確認推奨'}
+              </span>
+              <div class="space-y-1">
+                <div class="text-xs font-bold ${isErr ? 'text-rose-900' : 'text-amber-900'}">${escapeHtml(issue.category)}</div>
+                <p class="text-sm ${isErr ? 'text-rose-800' : 'text-amber-800'}">${escapeHtml(issue.detail)}</p>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
 
-                const total = aiResult.issues?.length || 0;
-                if (total === 0) {
-                    showToast('AI校正チェックが完了しました。問題は検出されませんでした！', 'success');
-                } else {
-                    showToast(`AI校正チェックが完了しました。合計 ${total} 件の指摘事項が見つかりました。`, 'warning');
-                }
-            } catch (err) {
-                console.error(err);
-                showToast(`解析中にエラーが発生しました: ${err.message}`, 'error');
-            } finally {
-                loadingSection.classList.add('hidden');
-                runCheckBtn.disabled = false;
-                document.getElementById('runBtnText').textContent = 'AI校正チェックを実行する';
-            }
-        });
-    </script>
+      if (compRows.length === 0) {
+        el.comparisonTbody.innerHTML = `
+          <tr>
+            <td colspan="4" class="py-6 px-3 text-center text-slate-400 text-xs">設問番号（「問1」「(1)」など）が検出されませんでした。</td>
+          </tr>
+        `;
+      } else {
+        el.comparisonTbody.innerHTML = compRows.map(r => `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="py-3 px-3 font-bold text-slate-800 whitespace-nowrap">${escapeHtml(r.key)}</td>
+            <td class="py-3 px-3 text-slate-600">${escapeHtml(r.qText)}</td>
+            <td class="py-3 px-3 text-slate-600">${escapeHtml(r.aText)}</td>
+            <td class="py-3 px-3 whitespace-nowrap">${r.statusHtml}</td>
+          </tr>
+        `).join('');
+      }
+
+      el.resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  </script>
 </body>
 </html>

@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta name="google-site-verification" content="QhLNJgeOPT-K4C-i7DbE3EmxKR7iFTtqJZnZqYCQk6s" />
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>テスト問題・解答用紙 校正チェッカー</title>
+    <title>TEST-TEST. - テスト問題・解答用紙 校正チェッカー</title>
+    <meta name="description" content="問題用紙と解答用紙のテキストや画像から、誤字脱字、設問番号のずれ、解答欄との不整合、配点ミスを自動検出するAI校正チェッカー「TEST-TEST.」">
+    <!-- Google Search Console 所有権確認タグ -->
+    <meta name="google-site-verification" content="QhLNJgeOPT-K4C-i7DbE3EmxKR7iFTtqJZnZqYCQk6s" />
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts: Noto Sans JP -->
@@ -70,11 +72,11 @@
                     </div>
                     <div>
                         <div class="flex items-center gap-2 flex-wrap">
-                            <h1 class="text-xl sm:text-2xl font-bold tracking-tight">テスト問題・解答用紙 校正チェッカー</h1>
+                            <h1 class="text-xl sm:text-2xl font-bold tracking-tight">TEST-TEST.</h1>
                             <span class="px-2.5 py-0.5 text-xs font-medium bg-emerald-500/30 text-emerald-200 border border-emerald-400/30 rounded-full">APIキー不要・画像OCR＆テキスト校正対応</span>
                         </div>
                         <p class="text-slate-300 text-sm mt-1">
-                            問題用紙と解答用紙のテキストや画像（貼り付け・D&D対応）から、誤字・表記ゆれ、設問番号のずれ、解答欄との不整合を自動検出します。
+                            問題用紙と解答用紙のテキストや画像から、誤字・表記ゆれ、設問番号のずれ、解答欄との不整合を自動検出します。
                         </p>
                     </div>
                 </div>
@@ -414,7 +416,7 @@
     <!-- フッター -->
     <footer class="bg-white border-t border-slate-200 py-6 mt-auto">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-xs text-slate-500">
-            <p>テスト問題・解答用紙 校正チェッカー — テキスト・画像マルチモーダルAI解析対応</p>
+            <p>TEST-TEST. — テキスト・画像マルチモーダルAI解析対応</p>
         </div>
     </footer>
 
@@ -868,7 +870,7 @@
                         rawLines: [line],
                         choices: [],
                         points: currentMajorEachPoints,
-                        hasBlankBox: /[\[［【\(\（]\s*[\]］】\)\）]/.test(line)
+                        hasBlankBox: /[\[［【\(\(']\s*[\]］】\)\）]/.test(line)
                     };
                 } else if (currentItem) {
                     currentItem.rawLines.push(line);
@@ -1437,7 +1439,7 @@
             }
 
             const lines = [];
-            lines.push('【テスト問題・解答用紙 校正チェック結果】');
+            lines.push('【TEST-TEST. 校正チェック結果】');
             if (currentSummary) lines.push(`■ AI総評: ${currentSummary}\n`);
             lines.push(`■ 指摘事項（全${currentIssues.length}件）`);
             currentIssues.forEach((iss, i) => {

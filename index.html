@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TEST-TEST. | テスト問題・解答用紙 校正チェッカー</title>
-  <meta name="description" content="テストの問題用紙と解答用紙のテキストや画像を貼り付けるだけで、誤字脱字、設問番号の抜け、選択肢のずれ、配点の過不足を自動チェックする無料校正ツール「TEST-TEST.」です。" />
+  <meta name="description" content="テストの問題用紙と解答用紙のテキスト・画像・PDFを読み込むだけで、誤字脱字、設問番号の抜け、選択肢のずれ、配点の過不足を自動チェックする無料校正ツール「TEST-TEST.」です。" />
   <meta name="google-site-verification" content="QhLNJgeOPT-K4C-i7DbE3EmxKR7iFTtqJZnZqYCQk6s" />
   <link rel="icon" type="image/png" href="favicon.png" />
   <link rel="canonical" href="https://masa64xmasa-hub.github.io/TEST-TEST./" />
@@ -103,6 +103,12 @@
   <!-- メインコンテンツ -->
   <main class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
+    <!-- ローカル処理の明記 -->
+    <div class="no-print rounded-xl border-2 border-emerald-300 bg-emerald-50 px-4 py-3 flex items-start gap-3">
+      <svg class="w-6 h-6 text-emerald-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+      <p class="text-sm text-emerald-900 leading-relaxed"><strong class="font-bold">画像やPDFはブラウザ内のみで処理され、外部サーバーには一切送信・保存されません。</strong><span class="block text-xs text-emerald-800 mt-0.5">未公開のテスト問題も安心してお使いください（読み取り用の部品のみ、起動時にインターネットから取得します）。</span></p>
+    </div>
+
     <!-- 検査オプション設定パネル -->
     <section class="no-print bg-white rounded-xl border border-slate-200 p-4 sm:p-5 shadow-sm space-y-4">
       <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
@@ -183,19 +189,19 @@
         <div class="flex items-center justify-between flex-wrap gap-2">
           <div class="flex items-center gap-2">
             <span class="px-2.5 py-1 rounded-lg bg-blue-100 text-blue-800 text-xs font-bold">問題用紙</span>
-            <h2 class="font-bold text-slate-800">問題文のテキスト・画像</h2>
+            <h2 class="font-bold text-slate-800">問題文のテキスト・画像・PDF</h2>
           </div>
           <label class="cursor-pointer text-xs bg-blue-50 hover:bg-blue-100 active:bg-blue-200 text-blue-700 font-medium px-3 py-2 rounded-xl border border-blue-200 transition inline-flex items-center gap-1.5">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
-            <span>画像を追加</span>
-            <input id="file-question" type="file" accept="image/*" multiple class="hidden" />
+            <span>画像・PDFを追加</span>
+            <input id="file-question" type="file" accept="image/*,application/pdf,.pdf" multiple class="hidden" />
           </label>
         </div>
 
         <p class="text-xs text-slate-500 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
-          テキスト入力、画像ドラッグ＆ドロップ、またはこの枠内で <kbd class="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[11px] font-mono">Ctrl+V</kbd> で画像を直接貼り付けられます。
+          テキスト入力、画像・PDFのドラッグ＆ドロップ（PDFは全ページを自動で取り込みます）、またはこの枠内で <kbd class="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[11px] font-mono">Ctrl+V</kbd> で画像を直接貼り付けられます。
         </p>
 
         <div class="relative flex rounded-xl border border-slate-300 overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 bg-white">
@@ -235,13 +241,13 @@
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
-            <span>画像を追加</span>
-            <input id="file-answer" type="file" accept="image/*" multiple class="hidden" />
+            <span>画像・PDFを追加</span>
+            <input id="file-answer" type="file" accept="image/*,application/pdf,.pdf" multiple class="hidden" />
           </label>
         </div>
 
         <p class="text-xs text-slate-500 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
-          テキスト入力、画像ドラッグ＆ドロップ、またはこの枠内で <kbd class="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[11px] font-mono">Ctrl+V</kbd> で画像を直接貼り付けられます。
+          テキスト入力、画像・PDFのドラッグ＆ドロップ（PDFは全ページを自動で取り込みます）、またはこの枠内で <kbd class="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[11px] font-mono">Ctrl+V</kbd> で画像を直接貼り付けられます。
         </p>
 
         <div class="relative flex rounded-xl border border-slate-300 overflow-hidden focus-within:ring-2 focus-within:ring-emerald-500 bg-white">
@@ -272,12 +278,26 @@
 
     </section>
 
-    <!-- 正答・解答例（任意） -->
-    <details class="no-print bg-white rounded-xl border border-slate-200 px-5 py-3 shadow-sm">
-      <summary class="text-sm font-bold text-slate-800 cursor-pointer select-none">正答・解答例を入力して照合する（任意）</summary>
+    <!-- 正答・模範解答（任意） -->
+    <details id="dropzone-key" class="no-print bg-white rounded-xl border-2 border-slate-200 px-5 py-3 shadow-sm">
+      <summary class="text-sm font-bold text-slate-800 cursor-pointer select-none">正答・模範解答を入力して照合する（任意）</summary>
       <div class="mt-3 space-y-2">
-        <p class="text-xs text-slate-500">1行に1問、「問1 イ」の形式で入力します。大問ごとに「【大問1】」の行を入れてください。問題用紙にない設問や、選択肢にない正答を見つけます。</p>
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <p class="text-xs text-slate-500">1行に1問、「問1 イ」の形式で入力します。大問ごとに「【大問1】」の行を入れてください。画像・PDFを追加すると文字を読み取って照合に使います（この枠にドラッグ＆ドロップも可）。</p>
+          <label class="cursor-pointer text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-medium px-3 py-2 rounded-xl border border-indigo-200 transition">
+            <span>画像・PDFを追加</span>
+            <input id="file-key" type="file" accept="image/*,application/pdf,.pdf" multiple class="hidden" />
+          </label>
+        </div>
         <textarea id="text-key" rows="6" placeholder="【大問1】&#10;問1 イ&#10;問2 葉緑体&#10;&#10;【大問2】&#10;問1 北海道" class="w-full px-3 py-2 text-xs sm:text-sm leading-relaxed font-mono-editor border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"></textarea>
+        <div id="preview-key" class="flex flex-wrap gap-3 empty:hidden"></div>
+        <details class="bg-indigo-50/50 border border-indigo-100 rounded-xl px-3 py-2">
+          <summary class="text-xs font-medium text-indigo-800 cursor-pointer select-none">画像・PDFから読み取った模範解答（確認・修正できます）</summary>
+          <div class="mt-2 space-y-2">
+            <button id="btn-ocr-key" type="button" class="text-xs bg-white hover:bg-indigo-50 text-indigo-700 border border-indigo-200 font-medium px-3 py-1.5 rounded-lg transition">読み取る（やり直す）</button>
+            <textarea id="ocr-key" rows="6" placeholder="画像・PDFを追加して「校正・整合性チェック」を実行すると、読み取った文字がここに表示されます。" class="w-full px-3 py-2 text-xs leading-relaxed font-mono-editor border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"></textarea>
+          </div>
+        </details>
       </div>
     </details>
 
@@ -372,6 +392,15 @@
       </div>
     </section>
 
+    <!-- 有料版アンケート（SITE_CONFIG.proInterestUrl を設定したときだけ表示） -->
+    <section id="pro-card" class="no-print hidden rounded-xl border border-indigo-200 bg-indigo-50 px-5 py-4 flex flex-wrap items-center justify-between gap-3">
+      <div class="text-sm text-indigo-900">
+        <p class="font-bold">有料版（PDF全ページ一括レポート・検品レポート出力など）を検討しています</p>
+        <p class="text-xs text-indigo-800 mt-0.5">※まだ提供しておらず、現在の機能はすべて無料です。ほしい機能や価格感を教えてください（1分程度のアンケート）。</p>
+      </div>
+      <a id="link-pro" href="#" target="_blank" rel="noopener" class="text-sm bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2.5 rounded-xl transition">アンケートに答える</a>
+    </section>
+
   </main>
 
   <!-- フッター -->
@@ -379,8 +408,9 @@
     <p class="space-x-3">
       <a href="privacy.html" class="underline hover:text-slate-700">プライバシーポリシー</a>
       <a href="terms.html" class="underline hover:text-slate-700">利用規約</a>
+      <a id="link-feedback" href="#" target="_blank" rel="noopener" class="hidden underline hover:text-slate-700">ご意見・不具合の報告</a>
     </p>
-    <p>入力した文章・画像の内容は外部に送信されず、お使いのブラウザ内で処理されます。</p>
+    <p><strong>入力した文章・画像・PDFの内容は外部に送信・保存されず、お使いのブラウザ内で処理されます。</strong></p>
     <p>&copy; 2026 TEST-TEST. All rights reserved.</p>
   </footer>
 
@@ -404,6 +434,7 @@
     const state = {
       questionImages: [],
       answerImages: [],
+      keyImages: [],
       latestIssues: [],
       currentFilter: 'all',
       imageSeq: Date.now(),
@@ -444,6 +475,11 @@
       btnCsv: document.getElementById('btn-csv'),
       btnPrint: document.getElementById('btn-print'),
       sectionTotalsTbody: document.getElementById('section-totals-tbody'),
+      fileK: document.getElementById('file-key'),
+      previewK: document.getElementById('preview-key'),
+      dropK: document.getElementById('dropzone-key'),
+      ocrK: document.getElementById('ocr-key'),
+      btnOcrK: document.getElementById('btn-ocr-key'),
       btnCheck: document.getElementById('btn-run-check'),
       btnGenSampleImg: document.getElementById('btn-gen-sample-img'),
       btnSample: document.getElementById('btn-load-sample'),
@@ -462,6 +498,21 @@
       btnCloseModal: document.getElementById('btn-close-modal'),
       toast: document.getElementById('toast')
     };
+
+    // 設置者が設定する値。空のままなら該当の表示は出ません。
+    const SITE_CONFIG = {
+      proInterestUrl: '', // 有料版アンケート（Googleフォーム等）のURL
+      feedbackUrl: ''     // ご意見・不具合報告フォームのURL
+    };
+    if (SITE_CONFIG.proInterestUrl) {
+      document.getElementById('link-pro').href = SITE_CONFIG.proInterestUrl;
+      document.getElementById('pro-card').classList.remove('hidden');
+    }
+    if (SITE_CONFIG.feedbackUrl) {
+      const f = document.getElementById('link-feedback');
+      f.href = SITE_CONFIG.feedbackUrl;
+      f.classList.remove('hidden');
+    }
 
     function escapeHtml(str) {
       return String(str)
@@ -536,24 +587,135 @@
       if (e.target === el.imageModal) el.imageModal.classList.add('hidden');
     });
 
+    const TGT = {
+      question: { list: () => state.questionImages, ta: () => el.ocrQ, prev: () => el.previewQ, hl: 'ocrQ', label: '問題用紙' },
+      answer: { list: () => state.answerImages, ta: () => el.ocrA, prev: () => el.previewA, hl: 'ocrA', label: '解答用紙' },
+      key: { list: () => state.keyImages, ta: () => el.ocrK, prev: () => el.previewK, hl: null, label: '模範解答' }
+    };
+
     function addImages(target, files) {
-      const list = target === 'question' ? state.questionImages : state.answerImages;
+      const list = TGT[target].list();
       Array.from(files).forEach(file => {
+        const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name || '');
+        if (isPdf) {
+          pdfChain = pdfChain.then(() => addPdf(target, file));
+          return;
+        }
         if (!file.type.startsWith('image/')) return;
         const reader = new FileReader();
         reader.onload = (e) => {
           list.push({ id: ++state.imageSeq, name: file.name || 'pasted-image.png', dataUrl: e.target.result });
           renderPreviews(target);
           updateEditorUI();
-          showToast(`${target === 'question' ? '問題用紙' : '解答用紙'}に画像を追加しました`);
+          showToast(`${TGT[target].label}に画像を追加しました`);
         };
         reader.readAsDataURL(file);
       });
     }
 
+    // ---------- PDF読み込み（PDF.js・ブラウザ内のみで処理） ----------
+    const PDF_JS_VER = '3.11.174';
+    const PDF_MAX_PAGES = 40;
+    let pdfjsPromise = null;
+    let pdfChain = Promise.resolve();
+
+    function loadPdfJs() {
+      if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+      if (pdfjsPromise) return pdfjsPromise;
+      const base = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDF_JS_VER}/`;
+      pdfjsPromise = new Promise((resolve, reject) => {
+        const sc = document.createElement('script');
+        sc.src = base + 'pdf.min.js';
+        sc.onload = () => {
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc = base + 'pdf.worker.min.js';
+          resolve(window.pdfjsLib);
+        };
+        sc.onerror = () => {
+          pdfjsPromise = null;
+          reject(new Error('PDF読み込み用の部品を取得できませんでした。ネットワーク接続を確認してください'));
+        };
+        document.head.appendChild(sc);
+      });
+      return pdfjsPromise;
+    }
+
+    // PDFの文字要素を、位置情報から「行」にまとめる
+    function pdfTextToLines(items) {
+      const arr = items.filter(i => i.str && i.str.length).map(i => ({
+        s: i.str, x: i.transform[4], y: i.transform[5], w: i.width || 0,
+        h: Math.abs(i.transform[3]) || i.height || 10
+      }));
+      arr.sort((a, b) => (b.y - a.y) || (a.x - b.x));
+      const lines = [];
+      arr.forEach(it => {
+        const last = lines[lines.length - 1];
+        if (last && Math.abs(last.y - it.y) <= Math.max(2, Math.min(last.h, it.h) * 0.5)) last.items.push(it);
+        else lines.push({ y: it.y, h: it.h, items: [it] });
+      });
+      return lines.map(l => {
+        l.items.sort((a, b) => a.x - b.x);
+        let out = '';
+        let prevEnd = null;
+        l.items.forEach(it => {
+          if (prevEnd !== null && it.x - prevEnd > it.h * 0.25 && /[A-Za-z0-9]$/.test(out) && /^[A-Za-z0-9]/.test(it.s)) out += ' ';
+          out += it.s;
+          prevEnd = it.x + it.w;
+        });
+        return out.trim();
+      }).filter(Boolean);
+    }
+
+    async function addPdf(target, file) {
+      const list = TGT[target].list();
+      el.progressBox.classList.remove('hidden');
+      el.progressBar.style.width = '10%';
+      try {
+        el.progressText.textContent = `PDF「${file.name}」を開いています...`;
+        const lib = await loadPdfJs();
+        const pdf = await lib.getDocument({ data: await file.arrayBuffer() }).promise;
+        const n = Math.min(pdf.numPages, PDF_MAX_PAGES);
+        let textPages = 0;
+        for (let i = 1; i <= n; i++) {
+          el.progressText.textContent = `PDF「${file.name}」を取り込み中（${i}/${n}ページ）...`;
+          el.progressBar.style.width = Math.round(10 + 80 * i / n) + '%';
+          const page = await pdf.getPage(i);
+          const tc = await page.getTextContent();
+          const lines = pdfTextToLines(tc.items);
+          const hasText = lines.join('').length >= 20;
+          const vp = page.getViewport({ scale: hasText ? 1.2 : 2.5 });
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.floor(vp.width);
+          canvas.height = Math.floor(vp.height);
+          await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+          list.push({
+            id: ++state.imageSeq,
+            name: `${file.name} ${i}ページ`,
+            dataUrl: canvas.toDataURL('image/jpeg', 0.85),
+            preText: hasText ? lines.join('\n') : null
+          });
+          if (hasText) textPages++;
+          page.cleanup();
+          renderPreviews(target);
+          updateEditorUI();
+        }
+        let msg = `${TGT[target].label}にPDF ${n}ページを追加しました`;
+        if (pdf.numPages > n) msg += `（上限のため先頭${PDF_MAX_PAGES}ページのみ）`;
+        if (n - textPages > 0) msg += `。${n - textPages}ページは画像として文字を読み取ります`;
+        showToast(msg);
+      } catch (err) {
+        console.error(err);
+        const m = err && err.name === 'PasswordException'
+          ? 'パスワード付きのPDFは読み込めません'
+          : 'PDFを読み込めませんでした: ' + (err && err.message ? err.message : err);
+        showToast(m);
+      } finally {
+        el.progressBox.classList.add('hidden');
+      }
+    }
+
     function renderPreviews(target) {
-      const list = target === 'question' ? state.questionImages : state.answerImages;
-      const container = target === 'question' ? el.previewQ : el.previewA;
+      const list = TGT[target].list();
+      const container = TGT[target].prev();
       container.innerHTML = '';
       list.forEach((img, idx) => {
         const div = document.createElement('div');
@@ -576,10 +738,12 @@
 
     el.fileQ.addEventListener('change', (e) => { addImages('question', e.target.files); e.target.value = ''; });
     el.fileA.addEventListener('change', (e) => { addImages('answer', e.target.files); e.target.value = ''; });
+    el.fileK.addEventListener('change', (e) => { addImages('key', e.target.files); e.target.value = ''; });
 
     [
       { zone: el.dropQ, target: 'question' },
-      { zone: el.dropA, target: 'answer' }
+      { zone: el.dropA, target: 'answer' },
+      { zone: el.dropK, target: 'key' }
     ].forEach(({ zone, target }) => {
       zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('drag-over'); });
       zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
@@ -730,6 +894,9 @@
       el.ocrQ.value = '';
       el.ocrA.value = '';
       el.textKey.value = '';
+      el.ocrK.value = '';
+      state.keyImages = [];
+      renderPreviews('key');
       state.marks = {};
       refreshAllHighlights();
       try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
@@ -759,23 +926,25 @@
     }
 
     function removeOcrBlock(target, id) {
-      const ta = target === 'question' ? el.ocrQ : el.ocrA;
+      const ta = TGT[target].ta();
       const b = parseOcrBlocks(ta.value).find(x => x.id === id && x.headerLine >= 0);
       if (!b) return;
       const lines = ta.value.split('\n');
       lines.splice(b.headerLine, 1 + b.lines.length);
       ta.value = lines.join('\n');
-      const key = target === 'question' ? 'ocrQ' : 'ocrA';
-      state.marks[key] = [];
-      refreshHighlight(key);
+      const hk = TGT[target].hl;
+      if (hk) {
+        state.marks[hk] = [];
+        refreshHighlight(hk);
+      }
       saveStateDebounced();
     }
 
     async function ensureOcr(target, force = false) {
-      const list = target === 'question' ? state.questionImages : state.answerImages;
-      const ta = target === 'question' ? el.ocrQ : el.ocrA;
-      const key = target === 'question' ? 'ocrQ' : 'ocrA';
-      const label = target === 'question' ? '問題用紙' : '解答用紙';
+      const list = TGT[target].list();
+      const ta = TGT[target].ta();
+      const hk = TGT[target].hl;
+      const label = TGT[target].label;
       const have = new Set(parseOcrBlocks(ta.value).map(b => b.id));
       const todo = force ? list.slice() : list.filter(img => !have.has(img.id));
       if (!todo.length) return;
@@ -783,23 +952,30 @@
       el.progressBox.classList.remove('hidden');
       const parts = [];
       for (let i = 0; i < todo.length; i++) {
-        el.progressText.textContent = `${label}の画像（${i + 1}/${todo.length}枚目）から文字を読み取り中...`;
-        const res = await Tesseract.recognize(todo[i].dataUrl, 'jpn+eng');
-        const text = (res.data.text || '').split(/\r?\n/).filter(l => l.trim()).join('\n');
+        let text;
+        if (todo[i].preText) {
+          text = todo[i].preText; // PDFの文字情報をそのまま使う（OCR不要）
+        } else {
+          el.progressText.textContent = `${label}の画像（${i + 1}/${todo.length}枚目）から文字を読み取り中...`;
+          const res = await Tesseract.recognize(todo[i].dataUrl, 'jpn+eng');
+          text = (res.data.text || '').split(/\r?\n/).filter(l => l.trim()).join('\n');
+        }
         parts.push(`▼画像${todo[i].id}: ${todo[i].name}\n${text}`);
       }
       const base = ta.value.replace(/\s+$/, '');
       ta.value = (base ? base + '\n' : '') + parts.join('\n');
       const details = ta.closest('details');
       if (details) details.open = true;
-      state.marks[key] = [];
-      refreshHighlight(key);
+      if (hk) {
+        state.marks[hk] = [];
+        refreshHighlight(hk);
+      }
       saveStateDebounced();
     }
 
-    [['question', el.btnOcrQ], ['answer', el.btnOcrA]].forEach(([target, btn]) => {
+    [['question', el.btnOcrQ], ['answer', el.btnOcrA], ['key', el.btnOcrK]].forEach(([target, btn]) => {
       btn.addEventListener('click', async () => {
-        const list = target === 'question' ? state.questionImages : state.answerImages;
+        const list = TGT[target].list();
         if (!list.length) {
           showToast('先に画像を追加してください');
           return;
@@ -895,7 +1071,7 @@
       try {
         localStorage.setItem(SAVE_KEY, JSON.stringify({
           q: el.textQ.value, a: el.textA.value, key: el.textKey.value,
-          oq: el.ocrQ.value, oa: el.ocrA.value,
+          oq: el.ocrQ.value, oa: el.ocrA.value, ok: el.ocrK.value,
           score: el.inputScore.value, scoreOn: el.chkScore.checked,
           typos: el.chkTypos.checked, numbering: el.chkNumbering.checked, consistency: el.chkConsistency.checked,
           subject: el.selectSubject.value
@@ -918,6 +1094,7 @@
         el.textKey.value = d.key || '';
         el.ocrQ.value = d.oq || '';
         el.ocrA.value = d.oa || '';
+        el.ocrK.value = d.ok || '';
         if (d.score) el.inputScore.value = d.score;
         el.chkScore.checked = d.scoreOn !== false;
         el.inputScore.disabled = !el.chkScore.checked;
@@ -934,6 +1111,7 @@
     [el.chkScore, el.chkTypos, el.chkNumbering, el.chkConsistency, el.selectSubject].forEach(x => x.addEventListener('change', saveStateDebounced));
     el.inputScore.addEventListener('input', saveStateDebounced);
     el.textKey.addEventListener('input', saveStateDebounced);
+    el.ocrK.addEventListener('input', saveStateDebounced);
 
     // ==========================================================
     // 修正案の適用
@@ -1526,7 +1704,7 @@
       const rawQ = el.textQ.value.trim();
       const rawA = el.textA.value.trim();
 
-      if (!rawQ && !rawA && !state.questionImages.length && !state.answerImages.length && !el.ocrQ.value.trim() && !el.ocrA.value.trim()) {
+      if (!rawQ && !rawA && !state.questionImages.length && !state.answerImages.length && !el.textKey.value.trim() && !el.ocrK.value.trim() && !el.ocrQ.value.trim() && !el.ocrA.value.trim()) {
         showToast('問題用紙または解答用紙のテキスト・画像を入力してください');
         return;
       }
@@ -1539,6 +1717,7 @@
         await ensureOcr('question');
         el.progressBar.style.width = '55%';
         await ensureOcr('answer');
+        await ensureOcr('key');
         el.progressBar.style.width = '80%';
 
         const qBlocks = parseOcrBlocks(el.ocrQ.value);
@@ -1711,8 +1890,9 @@
         });
 
         // 3.5 正答・解答例との照合（入力がある場合のみ）
-        if (el.chkConsistency.checked && el.textKey.value.trim()) {
-          const keyNorm = el.textKey.value.replace(/(問\s*[0-9０-９]+)\s*[:：=＝]\s*/g, '$1 ');
+        const keyText = [el.textKey.value, ...parseOcrBlocks(el.ocrK.value).map(b => b.lines.join('\n'))].join('\n');
+        if (el.chkConsistency.checked && keyText.trim()) {
+          const keyNorm = keyText.replace(/(問\s*[0-9０-９]+)\s*[:：=＝]\s*/g, '$1 ');
           const keyItems = parseQuestionsFromText(keyNorm);
           const noKey = qItems.filter(q => !keyItems.some(k => k.key === q.key));
           if (noKey.length) {

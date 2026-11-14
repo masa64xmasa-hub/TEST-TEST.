@@ -7,6 +7,19 @@
   <meta name="description" content="テストの問題用紙と解答用紙のテキストや画像を貼り付けるだけで、誤字脱字、設問番号の抜け、選択肢のずれ、配点の過不足を自動チェックする無料校正ツール「TEST-TEST.」です。" />
   <meta name="google-site-verification" content="QhLNJgeOPT-K4C-i7DbE3EmxKR7iFTtqJZnZqYCQk6s" />
   <link rel="icon" type="image/png" href="favicon.png" />
+  <link rel="canonical" href="https://masa64xmasa-hub.github.io/" />
+  <!-- OGP（SNSで共有されたときの表示） -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="TEST-TEST." />
+  <meta property="og:title" content="TEST-TEST. | テスト問題・解答用紙 校正チェッカー" />
+  <meta property="og:description" content="問題用紙と解答用紙を貼り付けるだけで、誤字脱字・設問番号の抜け・選択肢のずれ・配点の過不足を自動チェック。" />
+  <meta property="og:url" content="https://masa64xmasa-hub.github.io/" />
+  <meta property="og:image" content="https://masa64xmasa-hub.github.io/ogp.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <!-- Google アナリティクス（使う場合は G-XXXXXXXXXX を自分の測定IDに替えてコメントを外す）
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-XXXXXXXXXX');</script>
+  -->
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Tesseract.js v5 CDN (ブラウザ内日本語・英語OCR) -->
@@ -37,12 +50,28 @@
     .line-numbers::-webkit-scrollbar {
       display: none;
     }
+    /* 原文上のハイライト（textareaの背面に同じ文字を重ねて色を付ける） */
+    .hl-wrap { position: relative; flex: 1 1 0%; min-width: 0; }
+    .hl-backdrop, .hl-textarea { white-space: pre-wrap; overflow-wrap: break-word; word-break: normal; }
+    .hl-backdrop { position: absolute; inset: 0; overflow-y: scroll; overflow-x: hidden; color: transparent; pointer-events: none; scrollbar-color: transparent transparent; }
+    .hl-backdrop::-webkit-scrollbar { background: transparent; }
+    .hl-backdrop::-webkit-scrollbar-thumb { background: transparent; }
+    .hl-textarea { position: relative; display: block; width: 100%; background: transparent; overflow-y: scroll; }
+    .hl-backdrop mark { color: transparent; border-radius: 3px; padding: 0; }
+    .hl-error { background: rgba(244, 63, 94, .30); }
+    .hl-warn { background: rgba(245, 158, 11, .34); }
+    .hl-whole.hl-error { background: rgba(244, 63, 94, .14); }
+    .hl-whole.hl-warn { background: rgba(245, 158, 11, .18); }
+    @media print {
+      .no-print { display: none !important; }
+      body { background: #fff; }
+    }
   </style>
 </head>
 <body class="text-slate-800 min-h-screen flex flex-col">
 
   <!-- ヘッダー -->
-  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+  <header class="no-print bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-3 min-w-0">
         <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-xl shadow-sm shrink-0">
@@ -72,7 +101,7 @@
   </header>
 
   <!-- 広告スペース（ヘッダー下部） -->
-  <div class="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 mt-4 flex justify-center">
+  <div class="no-print max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 mt-4 flex justify-center">
     <div class="w-full max-w-[740px] min-h-[98px] bg-slate-100/80 border border-slate-200 rounded-xl flex items-center justify-center overflow-x-auto ad-scroll p-1">
       <!-- admax -->
       <script src="https://adm.shinobi.jp/s/998a3451cdf935b1d81d555b0dc412cd"></script>
@@ -84,7 +113,7 @@
   <main class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
     <!-- 検査オプション設定パネル -->
-    <section class="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 shadow-sm space-y-4">
+    <section class="no-print bg-white rounded-xl border border-slate-200 p-4 sm:p-5 shadow-sm space-y-4">
       <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
         <div class="flex items-center gap-2">
           <span class="w-2 h-2 rounded-full bg-indigo-600"></span>
@@ -133,6 +162,18 @@
           </select>
         </label>
 
+        <label class="inline-flex items-center gap-2 text-xs font-medium text-slate-700">
+          <span class="whitespace-nowrap">教科別の用語辞書</span>
+          <select id="select-subject" class="border border-slate-300 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="all">すべての教科</option>
+            <option value="science">理科</option>
+            <option value="social">社会</option>
+            <option value="japanese">国語</option>
+            <option value="math">数学</option>
+            <option value="english">英語</option>
+          </select>
+        </label>
+
         <details class="flex-1 min-w-[260px] bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
           <summary class="text-xs font-medium text-slate-700 cursor-pointer select-none">ユーザー辞書（よくある誤表記を登録して自動チェック）</summary>
           <div class="mt-2 space-y-1.5">
@@ -144,7 +185,7 @@
     </section>
 
     <!-- 入力エリア（左右2カラム） -->
-    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <section class="no-print grid grid-cols-1 lg:grid-cols-2 gap-6">
       
       <!-- 左：問題用紙 -->
       <div id="dropzone-question" class="bg-white rounded-xl border-2 border-slate-200 p-5 shadow-sm flex flex-col gap-3.5 transition">
@@ -168,10 +209,28 @@
 
         <div class="relative flex rounded-xl border border-slate-300 overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 bg-white">
           <div id="lines-question" aria-hidden="true" class="line-numbers select-none bg-slate-50 text-slate-400 text-right py-3.5 px-2.5 text-xs sm:text-sm leading-relaxed font-mono-editor border-r border-slate-200 overflow-y-hidden w-10 shrink-0">1</div>
-          <textarea id="text-question" rows="13" placeholder="ここに問題用紙のテキストを貼り付けてください..." class="w-full py-3.5 px-3 text-xs sm:text-sm leading-relaxed font-mono-editor focus:outline-none resize-y border-0"></textarea>
+          <div class="hl-wrap">
+            <div id="hl-question" aria-hidden="true" class="hl-backdrop py-3.5 px-3 text-xs sm:text-sm leading-relaxed font-mono-editor"></div>
+            <textarea id="text-question" rows="13" placeholder="ここに問題用紙のテキストを貼り付けてください..." class="hl-textarea w-full py-3.5 px-3 text-xs sm:text-sm leading-relaxed font-mono-editor focus:outline-none resize-y border-0"></textarea>
+          </div>
         </div>
 
         <div id="preview-question" class="flex flex-wrap gap-3 empty:hidden"></div>
+        <details id="details-ocr-question" class="bg-blue-50/50 border border-blue-100 rounded-xl px-3 py-2">
+          <summary class="text-xs font-medium text-blue-800 cursor-pointer select-none">画像から読み取ったテキスト（確認・修正できます）</summary>
+          <div class="mt-2 space-y-2">
+            <div class="flex flex-wrap items-center gap-2">
+              <button id="btn-ocr-question" type="button" class="text-xs bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 font-medium px-3 py-1.5 rounded-lg transition">画像を読み取る（やり直す）</button>
+              <span class="text-[11px] text-slate-500">読み取りの誤りはここで直してください。チェックはこの内容で行われます。</span>
+            </div>
+            <div class="flex rounded-xl border border-slate-300 overflow-hidden bg-white">
+              <div class="hl-wrap">
+                <div id="hl-ocr-question" aria-hidden="true" class="hl-backdrop py-3 px-3 text-xs leading-relaxed font-mono-editor"></div>
+                <textarea id="ocr-question" rows="7" placeholder="画像を追加して「校正・整合性チェック」を実行すると、読み取った文字がここに表示されます。" class="hl-textarea w-full py-3 px-3 text-xs leading-relaxed font-mono-editor focus:outline-none resize-y border-0"></textarea>
+              </div>
+            </div>
+          </div>
+        </details>
       </div>
 
       <!-- 右：解答用紙 -->
@@ -196,16 +255,43 @@
 
         <div class="relative flex rounded-xl border border-slate-300 overflow-hidden focus-within:ring-2 focus-within:ring-emerald-500 bg-white">
           <div id="lines-answer" aria-hidden="true" class="line-numbers select-none bg-slate-50 text-slate-400 text-right py-3.5 px-2.5 text-xs sm:text-sm leading-relaxed font-mono-editor border-r border-slate-200 overflow-y-hidden w-10 shrink-0">1</div>
-          <textarea id="text-answer" rows="13" placeholder="ここに解答用紙のテキストを貼り付けてください..." class="w-full py-3.5 px-3 text-xs sm:text-sm leading-relaxed font-mono-editor focus:outline-none resize-y border-0"></textarea>
+          <div class="hl-wrap">
+            <div id="hl-answer" aria-hidden="true" class="hl-backdrop py-3.5 px-3 text-xs sm:text-sm leading-relaxed font-mono-editor"></div>
+            <textarea id="text-answer" rows="13" placeholder="ここに解答用紙のテキストを貼り付けてください..." class="hl-textarea w-full py-3.5 px-3 text-xs sm:text-sm leading-relaxed font-mono-editor focus:outline-none resize-y border-0"></textarea>
+          </div>
         </div>
 
         <div id="preview-answer" class="flex flex-wrap gap-3 empty:hidden"></div>
+        <details id="details-ocr-answer" class="bg-emerald-50/50 border border-emerald-100 rounded-xl px-3 py-2">
+          <summary class="text-xs font-medium text-emerald-800 cursor-pointer select-none">画像から読み取ったテキスト（確認・修正できます）</summary>
+          <div class="mt-2 space-y-2">
+            <div class="flex flex-wrap items-center gap-2">
+              <button id="btn-ocr-answer" type="button" class="text-xs bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium px-3 py-1.5 rounded-lg transition">画像を読み取る（やり直す）</button>
+              <span class="text-[11px] text-slate-500">読み取りの誤りはここで直してください。チェックはこの内容で行われます。</span>
+            </div>
+            <div class="flex rounded-xl border border-slate-300 overflow-hidden bg-white">
+              <div class="hl-wrap">
+                <div id="hl-ocr-answer" aria-hidden="true" class="hl-backdrop py-3 px-3 text-xs leading-relaxed font-mono-editor"></div>
+                <textarea id="ocr-answer" rows="7" placeholder="画像を追加して「校正・整合性チェック」を実行すると、読み取った文字がここに表示されます。" class="hl-textarea w-full py-3 px-3 text-xs leading-relaxed font-mono-editor focus:outline-none resize-y border-0"></textarea>
+              </div>
+            </div>
+          </div>
+        </details>
       </div>
 
     </section>
 
+    <!-- 正答・解答例（任意） -->
+    <details class="no-print bg-white rounded-xl border border-slate-200 px-5 py-3 shadow-sm">
+      <summary class="text-sm font-bold text-slate-800 cursor-pointer select-none">正答・解答例を入力して照合する（任意）</summary>
+      <div class="mt-3 space-y-2">
+        <p class="text-xs text-slate-500">1行に1問、「問1 イ」の形式で入力します。大問ごとに「【大問1】」の行を入れてください。問題用紙にない設問や、選択肢にない正答を見つけます。</p>
+        <textarea id="text-key" rows="6" placeholder="【大問1】&#10;問1 イ&#10;問2 葉緑体&#10;&#10;【大問2】&#10;問1 北海道" class="w-full px-3 py-2 text-xs sm:text-sm leading-relaxed font-mono-editor border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"></textarea>
+      </div>
+    </details>
+
     <!-- チェック実行ボタン -->
-    <div class="flex justify-center">
+    <div class="no-print flex justify-center">
       <button id="btn-run-check" type="button" class="w-full sm:w-auto min-w-[320px] bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:bg-slate-400 disabled:cursor-not-allowed text-white font-bold text-base px-8 py-4 rounded-xl shadow-md hover:shadow-lg transition flex items-center justify-center gap-2.5">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -217,6 +303,7 @@
     <!-- 進捗表示 -->
     <div id="progress-box" class="hidden bg-indigo-50 border border-indigo-200 rounded-xl p-5 text-center space-y-2.5">
       <p id="progress-text" class="text-sm font-bold text-indigo-800">解析を実行中です...</p>
+      <p class="text-xs text-indigo-600">画像を読み取る場合、初回は日本語OCRデータの読み込みに数十秒かかることがあります。</p>
       <div class="w-full max-w-md mx-auto bg-indigo-200 rounded-full h-2.5 overflow-hidden">
         <div id="progress-bar" class="bg-indigo-600 h-2.5 rounded-full transition-all duration-300" style="width: 30%"></div>
       </div>
@@ -231,7 +318,7 @@
             <div id="summary-badges" class="flex flex-wrap gap-2"></div>
           </div>
 
-          <div class="flex flex-wrap items-center gap-2">
+          <div class="no-print flex flex-wrap items-center gap-2">
             <div class="inline-flex rounded-xl bg-slate-100 p-1 text-xs font-medium" role="group">
               <button type="button" data-filter="all" class="filter-btn px-3 py-1.5 rounded-lg bg-white text-slate-900 shadow-sm transition">すべて</button>
               <button type="button" data-filter="error" class="filter-btn px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition">要修正のみ</button>
@@ -244,6 +331,10 @@
               </svg>
               <span>レポートをコピー</span>
             </button>
+
+            <button id="btn-apply-all" type="button" class="hidden text-xs bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold px-3.5 py-2 rounded-xl transition">修正案をすべて適用</button>
+            <button id="btn-csv" type="button" class="text-xs bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold px-3.5 py-2 rounded-xl transition">CSVで保存</button>
+            <button id="btn-print" type="button" class="text-xs bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold px-3.5 py-2 rounded-xl transition">印刷／PDF保存</button>
           </div>
         </div>
 
@@ -270,6 +361,24 @@
           </table>
         </div>
       </div>
+
+      <!-- 大問ごとの配点合計 -->
+      <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4">
+        <h3 class="text-base font-bold text-slate-900">大問ごとの配点合計</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-50 border-b border-slate-200 text-slate-600">
+                <th class="py-2.5 px-3 font-semibold whitespace-nowrap">大問</th>
+                <th class="py-2.5 px-3 font-semibold">問題用紙の合計</th>
+                <th class="py-2.5 px-3 font-semibold">解答用紙の合計</th>
+                <th class="py-2.5 px-3 font-semibold whitespace-nowrap">判定</th>
+              </tr>
+            </thead>
+            <tbody id="section-totals-tbody" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+      </div>
     </section>
 
   </main>
@@ -286,7 +395,12 @@
   -->
 
   <!-- フッター -->
-  <footer class="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-500">
+  <footer class="no-print bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-500 space-y-2">
+    <p class="space-x-3">
+      <a href="privacy.html" class="underline hover:text-slate-700">プライバシーポリシー</a>
+      <a href="terms.html" class="underline hover:text-slate-700">利用規約</a>
+    </p>
+    <p>入力した文章・画像の内容は外部に送信されず、お使いのブラウザ内で処理されます。</p>
     <p>&copy; 2026 TEST-TEST. All rights reserved.</p>
   </footer>
 
@@ -311,7 +425,9 @@
       questionImages: [],
       answerImages: [],
       latestIssues: [],
-      currentFilter: 'all'
+      currentFilter: 'all',
+      imageSeq: Date.now(),
+      marks: {}
     };
 
     const el = {
@@ -334,6 +450,20 @@
       chkConsistency: document.getElementById('chk-consistency'),
       selectStrict: document.getElementById('select-strictness'),
       customDict: document.getElementById('text-custom-dict'),
+      selectSubject: document.getElementById('select-subject'),
+      textKey: document.getElementById('text-key'),
+      ocrQ: document.getElementById('ocr-question'),
+      ocrA: document.getElementById('ocr-answer'),
+      hlQ: document.getElementById('hl-question'),
+      hlA: document.getElementById('hl-answer'),
+      hlOcrQ: document.getElementById('hl-ocr-question'),
+      hlOcrA: document.getElementById('hl-ocr-answer'),
+      btnOcrQ: document.getElementById('btn-ocr-question'),
+      btnOcrA: document.getElementById('btn-ocr-answer'),
+      btnApplyAll: document.getElementById('btn-apply-all'),
+      btnCsv: document.getElementById('btn-csv'),
+      btnPrint: document.getElementById('btn-print'),
+      sectionTotalsTbody: document.getElementById('section-totals-tbody'),
       btnCheck: document.getElementById('btn-run-check'),
       btnGenSampleImg: document.getElementById('btn-gen-sample-img'),
       btnSample: document.getElementById('btn-load-sample'),
@@ -385,6 +515,7 @@
       const aChars = el.textA.value.length;
       const aLines = el.textA.value ? el.textA.value.split(/\r?\n/).length : 0;
 
+      saveStateDebounced();
       el.liveStats.textContent = `問題用紙: ${qChars}文字 / ${qLines}行 / 画像${state.questionImages.length}枚 ｜ 解答用紙: ${aChars}文字 / ${aLines}行 / 画像${state.answerImages.length}枚`;
     }
 
@@ -431,7 +562,7 @@
         if (!file.type.startsWith('image/')) return;
         const reader = new FileReader();
         reader.onload = (e) => {
-          list.push({ name: file.name || 'pasted-image.png', dataUrl: e.target.result });
+          list.push({ id: ++state.imageSeq, name: file.name || 'pasted-image.png', dataUrl: e.target.result });
           renderPreviews(target);
           updateEditorUI();
           showToast(`${target === 'question' ? '問題用紙' : '解答用紙'}に画像を追加しました`);
@@ -455,6 +586,7 @@
         div.querySelector('button').addEventListener('click', (e) => {
           e.stopPropagation();
           list.splice(idx, 1);
+          removeOcrBlock(target, img.id);
           renderPreviews(target);
           updateEditorUI();
         });
@@ -552,11 +684,16 @@
         '問2 [ ア ・ イ ・ ウ ・ エ ] （25点）'
       ]);
 
-      state.questionImages = [{ name: 'sample-question.png', dataUrl: qImgUrl }];
-      state.answerImages = [{ name: 'sample-answer.png', dataUrl: aImgUrl }];
+      el.ocrQ.value = '';
+      el.ocrA.value = '';
+      state.marks = {};
+      state.questionImages = [{ id: ++state.imageSeq, name: 'sample-question.png', dataUrl: qImgUrl }];
+      state.answerImages = [{ id: ++state.imageSeq, name: 'sample-answer.png', dataUrl: aImgUrl }];
       renderPreviews('question');
       renderPreviews('answer');
       updateEditorUI();
+      refreshAllHighlights();
+      saveState();
       showToast('ミス入りの問題用紙・解答用紙サンプル画像を生成しました！');
     });
 
@@ -593,6 +730,11 @@
       el.scoreWrapper.classList.remove('opacity-40');
       el.inputScore.value = 100;
       updateEditorUI();
+      el.ocrQ.value = '';
+      el.ocrA.value = '';
+      state.marks = {};
+      refreshAllHighlights();
+      saveState();
       showToast('ミス入りのサンプルテキストを読み込みました');
     });
 
@@ -605,20 +747,277 @@
       renderPreviews('answer');
       el.resultSection.classList.add('hidden');
       updateEditorUI();
+      el.ocrQ.value = '';
+      el.ocrA.value = '';
+      el.textKey.value = '';
+      state.marks = {};
+      refreshAllHighlights();
+      try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
       showToast('入力内容をすべてクリアしました');
     });
 
-    // 画像ごとに文字を読み取り、[{name, text}] を返す（空行は除去し、画像上の行順に番号が合うようにする）
-    async function extractTextFromImages(images, label) {
-      const results = [];
-      for (let i = 0; i < images.length; i++) {
-        el.progressText.textContent = `${label}の画像（${i + 1}/${images.length}枚目）から文字を読み取り中...`;
-        const res = await Tesseract.recognize(images[i].dataUrl, 'jpn+eng');
-        const text = (res.data.text || '').split(/\r?\n/).filter(l => l.trim()).join('\n');
-        results.push({ name: images[i].name, text });
-      }
-      return results;
+    // ==========================================================
+    // OCR（画像の文字読み取り）。結果は編集できるテキスト欄に入れ、チェックはその内容で行う
+    // 書式：「▼画像<番号>: <ファイル名>」の見出し行のあとに、その画像の読み取り結果が続く
+    // ==========================================================
+    function parseOcrBlocks(text) {
+      const blocks = [];
+      let cur = null;
+      String(text || '').split('\n').forEach((line, i) => {
+        const m = line.match(/^▼画像(\d+):\s*(.*)$/);
+        if (m) {
+          cur = { id: Number(m[1]), name: m[2], headerLine: i, lines: [] };
+          blocks.push(cur);
+        } else if (cur) {
+          cur.lines.push(line);
+        } else if (line.trim()) {
+          cur = { id: 0, name: '読み取りテキスト', headerLine: -1, lines: [line] };
+          blocks.push(cur);
+        }
+      });
+      return blocks;
     }
+
+    function removeOcrBlock(target, id) {
+      const ta = target === 'question' ? el.ocrQ : el.ocrA;
+      const b = parseOcrBlocks(ta.value).find(x => x.id === id && x.headerLine >= 0);
+      if (!b) return;
+      const lines = ta.value.split('\n');
+      lines.splice(b.headerLine, 1 + b.lines.length);
+      ta.value = lines.join('\n');
+      const key = target === 'question' ? 'ocrQ' : 'ocrA';
+      state.marks[key] = [];
+      refreshHighlight(key);
+      saveStateDebounced();
+    }
+
+    async function ensureOcr(target, force = false) {
+      const list = target === 'question' ? state.questionImages : state.answerImages;
+      const ta = target === 'question' ? el.ocrQ : el.ocrA;
+      const key = target === 'question' ? 'ocrQ' : 'ocrA';
+      const label = target === 'question' ? '問題用紙' : '解答用紙';
+      const have = new Set(parseOcrBlocks(ta.value).map(b => b.id));
+      const todo = force ? list.slice() : list.filter(img => !have.has(img.id));
+      if (!todo.length) return;
+      if (force) todo.forEach(img => removeOcrBlock(target, img.id));
+      el.progressBox.classList.remove('hidden');
+      const parts = [];
+      for (let i = 0; i < todo.length; i++) {
+        el.progressText.textContent = `${label}の画像（${i + 1}/${todo.length}枚目）から文字を読み取り中...`;
+        const res = await Tesseract.recognize(todo[i].dataUrl, 'jpn+eng');
+        const text = (res.data.text || '').split(/\r?\n/).filter(l => l.trim()).join('\n');
+        parts.push(`▼画像${todo[i].id}: ${todo[i].name}\n${text}`);
+      }
+      const base = ta.value.replace(/\s+$/, '');
+      ta.value = (base ? base + '\n' : '') + parts.join('\n');
+      const details = ta.closest('details');
+      if (details) details.open = true;
+      state.marks[key] = [];
+      refreshHighlight(key);
+      saveStateDebounced();
+    }
+
+    [['question', el.btnOcrQ], ['answer', el.btnOcrA]].forEach(([target, btn]) => {
+      btn.addEventListener('click', async () => {
+        const list = target === 'question' ? state.questionImages : state.answerImages;
+        if (!list.length) {
+          showToast('先に画像を追加してください');
+          return;
+        }
+        btn.disabled = true;
+        try {
+          await ensureOcr(target, true);
+          showToast('画像の読み取りが完了しました。内容を確認してください');
+        } catch (err) {
+          console.error(err);
+          showToast('読み取りに失敗しました: ' + err.message);
+        } finally {
+          el.progressBox.classList.add('hidden');
+          btn.disabled = false;
+        }
+      });
+    });
+
+    // ==========================================================
+    // 原文上のハイライト
+    // ==========================================================
+    const HL = {
+      textQ: { ta: el.textQ, hl: el.hlQ },
+      textA: { ta: el.textA, hl: el.hlA },
+      ocrQ: { ta: el.ocrQ, hl: el.hlOcrQ },
+      ocrA: { ta: el.ocrA, hl: el.hlOcrA }
+    };
+
+    // 文字の間に空白が入っていても一致させる（OCR結果向け）
+    function flexRegex(wrong) {
+      return new RegExp(Array.from(wrong).map(escapeRegExp).join('[ \\t\\u3000]*'));
+    }
+
+    function refreshHighlight(key) {
+      const { ta, hl } = HL[key];
+      const marks = (state.marks && state.marks[key]) || [];
+      const lines = ta.value.split('\n');
+      ta.dataset.lines = String(lines.length);
+      const byLine = {};
+      marks.forEach(m => { (byLine[m.line] = byLine[m.line] || []).push(m); });
+      const html = lines.map((line, i) => {
+        const ms = byLine[i];
+        if (!ms || !line) return escapeHtml(line);
+        let ranges = [];
+        ms.filter(m => m.wrong).forEach(m => {
+          const mm = flexRegex(m.wrong).exec(line);
+          if (mm) ranges.push({ s: mm.index, e: mm.index + mm[0].length, level: m.level, whole: false });
+        });
+        if (!ranges.length) {
+          const wl = ms.find(m => !m.wrong);
+          if (wl) {
+            const s = line.length - line.trimStart().length;
+            const e = line.trimEnd().length;
+            if (e > s) ranges = [{ s, e, level: wl.level, whole: true }];
+          }
+        }
+        ranges.sort((a, b) => a.s - b.s);
+        let out = '';
+        let pos = 0;
+        ranges.forEach(r => {
+          if (r.s < pos) return;
+          out += escapeHtml(line.slice(pos, r.s)) +
+            `<mark class="hl-${r.level === 'error' ? 'error' : 'warn'}${r.whole ? ' hl-whole' : ''}">` +
+            escapeHtml(line.slice(r.s, r.e)) + '</mark>';
+          pos = r.e;
+        });
+        return out + escapeHtml(line.slice(pos));
+      }).join('\n');
+      hl.innerHTML = html + '\n';
+      hl.scrollTop = ta.scrollTop;
+    }
+
+    function refreshAllHighlights() {
+      Object.keys(HL).forEach(refreshHighlight);
+    }
+
+    Object.entries(HL).forEach(([key, { ta, hl }]) => {
+      ta.addEventListener('input', () => {
+        // 行数が変わると位置がずれるため、ハイライトを消す
+        if (String(ta.value.split('\n').length) !== ta.dataset.lines) state.marks[key] = [];
+        refreshHighlight(key);
+        saveStateDebounced();
+      });
+      ta.addEventListener('scroll', () => { hl.scrollTop = ta.scrollTop; });
+    });
+
+    // ==========================================================
+    // 入力内容の自動保存（画像は保存しない）
+    // ==========================================================
+    const SAVE_KEY = 'testtest_state_v1';
+
+    function saveState() {
+      try {
+        localStorage.setItem(SAVE_KEY, JSON.stringify({
+          q: el.textQ.value, a: el.textA.value, key: el.textKey.value,
+          oq: el.ocrQ.value, oa: el.ocrA.value,
+          score: el.inputScore.value, scoreOn: el.chkScore.checked,
+          typos: el.chkTypos.checked, numbering: el.chkNumbering.checked, consistency: el.chkConsistency.checked,
+          subject: el.selectSubject.value
+        }));
+      } catch (e) { /* 保存できない環境では何もしない */ }
+    }
+
+    function saveStateDebounced() {
+      clearTimeout(window._saveTimer);
+      window._saveTimer = setTimeout(saveState, 400);
+    }
+
+    function restoreState() {
+      try {
+        const raw = localStorage.getItem(SAVE_KEY);
+        if (!raw) return;
+        const d = JSON.parse(raw);
+        el.textQ.value = d.q || '';
+        el.textA.value = d.a || '';
+        el.textKey.value = d.key || '';
+        el.ocrQ.value = d.oq || '';
+        el.ocrA.value = d.oa || '';
+        if (d.score) el.inputScore.value = d.score;
+        el.chkScore.checked = d.scoreOn !== false;
+        el.inputScore.disabled = !el.chkScore.checked;
+        el.scoreWrapper.classList.toggle('opacity-40', !el.chkScore.checked);
+        el.chkTypos.checked = d.typos !== false;
+        el.chkNumbering.checked = d.numbering !== false;
+        el.chkConsistency.checked = d.consistency !== false;
+        if (d.subject) el.selectSubject.value = d.subject;
+        if (el.ocrQ.value.trim()) el.ocrQ.closest('details').open = true;
+        if (el.ocrA.value.trim()) el.ocrA.closest('details').open = true;
+      } catch (e) { /* 壊れた保存データは無視する */ }
+    }
+
+    [el.chkScore, el.chkTypos, el.chkNumbering, el.chkConsistency, el.selectSubject].forEach(x => x.addEventListener('change', saveStateDebounced));
+    el.inputScore.addEventListener('input', saveStateDebounced);
+    el.textKey.addEventListener('input', saveStateDebounced);
+
+    // ==========================================================
+    // 修正案の適用
+    // ==========================================================
+    function applyIssueFix(issue) {
+      if (!issue || !issue.fix || !issue.wrong || !issue.src) return false;
+      const ta = el[issue.src.ta];
+      const lines = ta.value.split('\n');
+      const li = issue.src.absLine;
+      if (li == null || lines[li] === undefined) return false;
+      const re = flexRegex(issue.wrong);
+      if (!re.test(lines[li])) return false;
+      lines[li] = lines[li].replace(re, () => issue.fix);
+      ta.value = lines.join('\n');
+      return true;
+    }
+
+    async function afterApply(n) {
+      updateEditorUI();
+      saveState();
+      showToast(`${n}件の修正を適用しました。もう一度チェックします`);
+      await runCheck();
+    }
+
+    el.issuesList.addEventListener('click', async (e) => {
+      const btn = e.target.closest('[data-apply]');
+      if (!btn) return;
+      const issue = state.latestIssues[Number(btn.dataset.apply)];
+      if (applyIssueFix(issue)) {
+        await afterApply(1);
+      } else {
+        showToast('該当箇所が見つかりませんでした（すでに修正済みかもしれません）');
+      }
+    });
+
+    el.btnApplyAll.addEventListener('click', async () => {
+      let n = 0;
+      state.latestIssues.forEach(issue => { if (applyIssueFix(issue)) n++; });
+      if (n > 0) await afterApply(n);
+      else showToast('適用できる修正案がありませんでした');
+    });
+
+    // ==========================================================
+    // 出力（CSV・印刷）
+    // ==========================================================
+    el.btnCsv.addEventListener('click', () => {
+      if (!state.latestIssues.length) {
+        showToast('保存する指摘事項がありません（問題なし）');
+        return;
+      }
+      const rows = [['レベル', 'カテゴリ', '内容']];
+      state.latestIssues.forEach(i => rows.push([i.level === 'error' ? '要修正' : '確認推奨', i.category, i.detail]));
+      const csv = '﻿' + rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+      const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `TEST-TEST_校正結果_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    });
+
+    el.btnPrint.addEventListener('click', () => window.print());
 
     function toHalfWidthNum(str) {
       return str.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
@@ -653,7 +1052,7 @@
         .replace(/(^|[\s　\[(・])才(?=[\s　\])・\/|]|$)/g, '$1オ');
       const order = ['ア', 'イ', 'ウ', 'エ', 'オ', 'カ', 'キ', 'A', 'B', 'C', 'D', 'E'];
       const found = order.filter(ch =>
-        new RegExp(`(?:^|[\\s　\\[(・/|])${ch}(?=[\\s　\\])・/|.]|[ぁ-んー一-龥々]|$)`).test(text)
+        new RegExp(`(?:^|[\\s　\\[(・/|、。])${ch}(?=[\\s　\\])・/|.]|[ぁ-んー一-龥々]|$)`).test(text)
       );
       // 記号が1つだけ見つかった場合は選択肢ではなく文中の文字とみなす
       return found.length >= 2 ? found : [];
@@ -853,7 +1252,7 @@
       { re: /(?:次の|この|その|あの|どの|上の|下の|以下の)様に/g, fix: m => m.replace('様に', 'ように'), cat: CAT.KANA, level: 'warn', tier: 'style', msg: '「ように」とひらがなで書くのが一般的です。' },
       { re: /出来(?=る|ない|た|ます|れば)/g, fix: 'でき', cat: CAT.KANA, level: 'warn', tier: 'style', msg: '「できる」とひらがなで書くのが一般的です。' },
       { re: /(?:見|食べ|着|出|来|寝|起き|考え|信じ|借り|降り|覚え)れる/g, fix: m => m.slice(0, -2) + 'られる', cat: CAT.RA, level: 'warn', tier: 'style', msg: 'ら抜き言葉の可能性があります。' },
-      { re: /まず最初(?:に)?/g, fix: m => m.replace('最初', ''), cat: CAT.WORDY, level: 'warn', tier: 'style', msg: '「まず」と「最初」の意味が重複しています。' },
+      { re: /まず最初(?:に)?/g, fix: 'まず', cat: CAT.WORDY, level: 'warn', tier: 'style', msg: '「まず」と「最初」の意味が重複しています。' },
       { re: /一番最初/g, fix: '最初', cat: CAT.WORDY, level: 'warn', tier: 'style', msg: '意味が重複しています。' },
       { re: /最も一番/g, fix: '最も', cat: CAT.WORDY, level: 'warn', tier: 'style', msg: '意味が重複しています。' },
       { re: /必ず必要/g, fix: '必要', cat: CAT.WORDY, level: 'warn', tier: 'style', msg: '意味が重複しています。' },
@@ -871,6 +1270,66 @@
       ...wordRules(KANJI_WORDS, CAT.KANJI, 'warn', 'style', '漢字表記を推奨します（読み仮名を答えさせる問題など、意図的なひらがなであれば問題ありません）。'),
       ...wordRules(KANA_WORDS, CAT.KANA, 'warn', 'style', 'ひらがな表記が一般的です。')
     ];
+
+    // 機種依存文字の単位記号 → 半角英字
+    const UNIT_MAP = { '㎝': 'cm', '㎜': 'mm', '㎞': 'km', '㎏': 'kg', '㎖': 'mL', '㎡': 'm²', '㎥': 'm³', '㏄': 'cc' };
+    BUILTIN_RULES.push({
+      re: /[㎝㎜㎞㎏㎖㎡㎥㏄]/g, fix: m => UNIT_MAP[m], cat: CAT.CHAR, level: 'warn', tier: 'style',
+      msg: '機種依存文字の単位記号です。環境によって表示が変わるため、半角英字の表記を推奨します。'
+    });
+
+    // 教科別の用語辞書
+    function engRules(list) {
+      return list.map(([w, r]) => ({
+        re: new RegExp('\\b' + w + '\\b', 'gi'),
+        fix: m => (/^[A-Z]/.test(m) ? r[0].toUpperCase() + r.slice(1) : r),
+        cat: CAT.TYPO, level: 'error', tier: 'core', msg: '英単語のつづり誤りの可能性があります。'
+      }));
+    }
+    const SUBJECT_RULES = {
+      science: [
+        ...wordRules([
+          ['元素記合', '元素記号'], ['化学変科', '化学変化'], ['抵坑', '抵抗'],
+          ['細包', '細胞'], ['染色対', '染色体'], ['減数分烈', '減数分裂'], ['堆績岩', '堆積岩'],
+          ['沸等', '沸騰'], ['沸謄', '沸騰'], ['飽和水蒸気料', '飽和水蒸気量'], ['蒸散作要', '蒸散作用'],
+          ['呼吸作要', '呼吸作用'], ['示準科石', '示準化石'], ['示相科石', '示相化石'],
+          ['電磁誘動', '電磁誘導'], ['誘動電流', '誘導電流'], ['水蒸器', '水蒸気']
+        ], CAT.TYPO, 'error', 'core', '理科の用語の誤字の可能性が高い表記です。'),
+        { re: /(?:慣性|オーム|フック|質量保存|万有引力|エネルギー保存)の方則/g, fix: m => m.replace('方則', '法則'), cat: CAT.TYPO, level: 'error', tier: 'core', msg: '「法則」の誤字です。' }
+      ],
+      social: [
+        ...wordRules([
+          ['明治維心', '明治維新'], ['廃藩置件', '廃藩置県'], ['地租改定', '地租改正'], ['治外法券', '治外法権'],
+          ['基本的人件', '基本的人権'], ['衆議員', '衆議院'], ['参議員', '参議院'], ['需用曲線', '需要曲線'],
+          ['供急', '供給'], ['リアス式海案', 'リアス式海岸'], ['織田信永', '織田信長'], ['源頼友', '源頼朝'],
+          ['徳川家庚', '徳川家康'], ['聖徳太師', '聖徳太子'], ['大化の改心', '大化の改新'], ['大化の回新', '大化の改新'],
+          ['関税自主件', '関税自主権']
+        ], CAT.TYPO, 'error', 'core', '社会の用語の誤字の可能性が高い表記です。'),
+        { re: /幕符|幕付/g, fix: '幕府', cat: CAT.TYPO, level: 'error', tier: 'core', msg: '「幕府」の誤字です。' }
+      ],
+      japanese: wordRules([
+        ['以心伝信', '以心伝心'], ['自我自賛', '自画自賛'], ['温古知新', '温故知新'], ['心気一転', '心機一転'],
+        ['気分一転', '心機一転'], ['五里夢中', '五里霧中'], ['異口同義', '異口同音'], ['短刀直入', '単刀直入'],
+        ['不和雷同', '付和雷同'], ['朝令募改', '朝令暮改'], ['弱肉強職', '弱肉強食'], ['大義名文', '大義名分'],
+        ['思考錯誤', '試行錯誤'], ['自給自速', '自給自足']
+      ], CAT.TYPO, 'error', 'core', '四字熟語・語句の誤字の可能性が高い表記です。'),
+      math: wordRules([
+        ['対頂覚', '対頂角'], ['円垂', '円錐'], ['角垂', '角錐'], ['三平方の定利', '三平方の定理'],
+        ['座票', '座標'], ['素因子分解', '素因数分解'], ['有利数', '有理数'], ['無利数', '無理数'],
+        ['平方恨', '平方根'], ['想似', '相似'], ['代人', '代入'], ['半比例', '反比例'], ['不等合', '不等号']
+      ], CAT.TYPO, 'error', 'core', '数学の用語の誤字の可能性が高い表記です。'),
+      english: [
+        ...engRules([
+          ['recieve', 'receive'], ['seperate', 'separate'], ['occured', 'occurred'], ['definately', 'definitely'],
+          ['becuase', 'because'], ['untill', 'until'], ['enviroment', 'environment'], ['goverment', 'government'],
+          ['tommorow', 'tomorrow'], ['beleive', 'believe'], ['freind', 'friend'], ['wierd', 'weird'],
+          ['accomodate', 'accommodate'], ['neccessary', 'necessary'], ['adress', 'address'], ['wich', 'which'],
+          ['thier', 'their'], ['alot', 'a lot']
+        ]),
+        { re: /(?<=[A-Za-z.,?!]) {2,}(?=[A-Za-z])/g, fix: ' ', cat: CAT.CHAR, level: 'warn', tier: 'core', msg: '英単語の間の空白が2つ以上あります。' },
+        { re: /,[A-Za-z]/g, fix: m => ', ' + m[1], cat: CAT.PUNCT, level: 'warn', tier: 'core', msg: 'カンマの後ろに空白がありません。' }
+      ]
+    };
 
     // ユーザー辞書（1行1件「誤り=正しい表記」）をルールに変換
     function parseCustomDict(src) {
@@ -931,7 +1390,10 @@
               level: rule.level,
               category: rule.cat,
               detail: `${i + 1}行目：${makeExcerpt(target, m.index, m[0].length)}` +
-                (fix ? ` → 修正案「${fix}」` : '') + `　${rule.msg}`
+                (fix ? ` → 修正案「${fix}」` : '') + `　${rule.msg}`,
+              lineIndex: i,
+              wrong: m[0],
+              fix: fix || null
             });
           }
         });
@@ -966,7 +1428,8 @@
             perLineFound = true;
             issues.push({
               level: 'error', category: CAT.BRACKET,
-              detail: `${i + 1}行目：${g.name}の対応が取れていません（開き${o}個 / 閉じ${c}個）。「${clipText(raw)}」`
+              detail: `${i + 1}行目：${g.name}の対応が取れていません（開き${o}個 / 閉じ${c}個）。「${clipText(raw)}」`,
+              lineIndex: i
             });
           }
         });
@@ -990,7 +1453,8 @@
         if (/[０-９]/.test(t) && /[0-9]/.test(t)) {
           issues.push({
             level: 'warn', category: CAT.CHAR,
-            detail: `${i + 1}行目：全角数字と半角数字が混在しています。「${clipText(t)}」`
+            detail: `${i + 1}行目：全角数字と半角数字が混在しています。「${clipText(t)}」`,
+            lineIndex: i
           });
         }
         if (strict) {
@@ -998,7 +1462,8 @@
           if (/(?:なさい|ください|答えよ|述べよ|選べ|書け|求めよ|せよ)$/.test(body)) {
             issues.push({
               level: 'warn', category: CAT.PUNCT,
-              detail: `${i + 1}行目：文末に句点「。」がありません。「${clipText(t)}」`
+              detail: `${i + 1}行目：文末に句点「。」がありません。「${clipText(t)}」`,
+              lineIndex: i
             });
           }
         }
@@ -1015,7 +1480,9 @@
     // 校正エンジン本体
     function proofread(text, opts = {}) {
       const strict = opts.strict !== false;
-      const rules = [...(opts.custom || []), ...BUILTIN_RULES];
+      const subj = opts.subject || 'all';
+      const subjectRules = subj === 'all' ? Object.values(SUBJECT_RULES).flat() : (SUBJECT_RULES[subj] || []);
+      const rules = [...(opts.custom || []), ...BUILTIN_RULES, ...subjectRules];
       return [
         ...applyRules(text, rules, strict),
         ...checkBrackets(text),
@@ -1027,15 +1494,59 @@
     function checkTyposAndKanji(text) {
       return proofread(text, {
         strict: el.selectStrict.value === 'strict',
-        custom: parseCustomDict(el.customDict.value)
+        custom: parseCustomDict(el.customDict.value),
+        subject: el.selectSubject.value
       });
     }
 
-    el.btnCheck.addEventListener('click', async () => {
+    // 選択肢記号の飛び（ア・イ・エ のように途中が抜けている）を検出
+    function findChoiceGap(choices) {
+      const gaps = [];
+      [['ア', 'イ', 'ウ', 'エ', 'オ', 'カ', 'キ'], ['A', 'B', 'C', 'D', 'E']].forEach(seq => {
+        const idx = choices.map(c => seq.indexOf(c)).filter(i => i >= 0).sort((a, b) => a - b);
+        if (idx.length < 2) return;
+        for (let i = idx[0]; i <= idx[idx.length - 1]; i++) {
+          if (!idx.includes(i)) gaps.push(seq[i]);
+        }
+      });
+      return gaps;
+    }
+
+    function sectionTotals(items) {
+      const t = {};
+      items.forEach(i => { t[i.section] = (t[i.section] || 0) + (i.points || 0); });
+      return t;
+    }
+
+    function renderSectionTotals(qItems, aItems) {
+      const qt = sectionTotals(qItems);
+      const at = sectionTotals(aItems);
+      const secs = [...new Set([...Object.keys(qt), ...Object.keys(at)])]
+        .sort((x, y) => parseInt(x.replace(/\D/g, ''), 10) - parseInt(y.replace(/\D/g, ''), 10));
+      if (!secs.length) {
+        el.sectionTotalsTbody.innerHTML = '<tr><td colspan="4" class="py-6 px-3 text-center text-slate-400 text-xs">大問が検出されませんでした。</td></tr>';
+        return;
+      }
+      const ok = '<span class="px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-xs font-bold">一致</span>';
+      const ng = '<span class="px-2.5 py-0.5 rounded-md bg-amber-100 text-amber-800 text-xs font-bold">不一致</span>';
+      const na = '<span class="px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-600 text-xs font-bold">—</span>';
+      const sumQ = Object.values(qt).reduce((x, y) => x + y, 0);
+      const sumA = Object.values(at).reduce((x, y) => x + y, 0);
+      const rows = secs.map(sec => {
+        const q = qt[sec];
+        const a = at[sec];
+        const st = (q === undefined || a === undefined) ? na : (q === a ? ok : ng);
+        return `<tr><td class="py-3 px-3 font-bold text-slate-800 whitespace-nowrap">${escapeHtml(sec)}</td><td class="py-3 px-3 text-slate-600">${q === undefined ? '—' : q + '点'}</td><td class="py-3 px-3 text-slate-600">${a === undefined ? '—' : a + '点'}</td><td class="py-3 px-3">${st}</td></tr>`;
+      });
+      rows.push(`<tr class="bg-slate-50"><td class="py-3 px-3 font-bold text-slate-800">合計</td><td class="py-3 px-3 font-bold text-slate-800">${sumQ}点</td><td class="py-3 px-3 font-bold text-slate-800">${sumA}点</td><td class="py-3 px-3">${sumQ === sumA ? ok : ng}</td></tr>`);
+      el.sectionTotalsTbody.innerHTML = rows.join('');
+    }
+
+    async function runCheck() {
       const rawQ = el.textQ.value.trim();
       const rawA = el.textA.value.trim();
 
-      if (!rawQ && !rawA && !state.questionImages.length && !state.answerImages.length) {
+      if (!rawQ && !rawA && !state.questionImages.length && !state.answerImages.length && !el.ocrQ.value.trim() && !el.ocrA.value.trim()) {
         showToast('問題用紙または解答用紙のテキスト・画像を入力してください');
         return;
       }
@@ -1045,35 +1556,44 @@
       el.progressBar.style.width = '20%';
 
       try {
-        const ocrQList = await extractTextFromImages(state.questionImages, '問題用紙');
+        await ensureOcr('question');
         el.progressBar.style.width = '55%';
-        const ocrAList = await extractTextFromImages(state.answerImages, '解答用紙');
+        await ensureOcr('answer');
         el.progressBar.style.width = '80%';
 
-        const fullQ = (rawQ + '\n' + ocrQList.map(o => o.text).join('\n')).trim();
-        const fullA = (rawA + '\n' + ocrAList.map(o => o.text).join('\n')).trim();
+        const qBlocks = parseOcrBlocks(el.ocrQ.value);
+        const aBlocks = parseOcrBlocks(el.ocrA.value);
+        const fullQ = [rawQ, ...qBlocks.map(b => b.lines.join('\n'))].join('\n').trim();
+        const fullA = [rawA, ...aBlocks.map(b => b.lines.join('\n'))].join('\n').trim();
 
         el.progressText.textContent = '漢字・誤字脱字・設問番号・配点・整合性をスマート解析中...';
 
         const issues = [];
+        state.marks = { textQ: [], textA: [], ocrQ: [], ocrA: [] };
 
         // 1. 漢字・送りがな・誤字脱字・括弧チェック
+        //    入力テキストと画像ごとの読み取り結果を別々に校正し、行番号と元の場所を対応させる
         if (el.chkTypos.checked) {
-          // 入力テキストと画像ごとのOCR結果を別々に校正し、行番号が元の場所と対応するようにする
           const proofSources = [
-            { label: '問題用紙', text: rawQ },
-            ...ocrQList.map(o => ({ label: `問題用紙・画像「${o.name}」`, text: o.text })),
-            { label: '解答用紙', text: rawA },
-            ...ocrAList.map(o => ({ label: `解答用紙・画像「${o.name}」`, text: o.text }))
+            { label: '問題用紙', text: el.textQ.value, ta: 'textQ', offset: 0 },
+            ...qBlocks.map(b => ({ label: `問題用紙・画像「${b.name}」`, text: b.lines.join('\n'), ta: 'ocrQ', offset: b.headerLine + 1 })),
+            { label: '解答用紙', text: el.textA.value, ta: 'textA', offset: 0 },
+            ...aBlocks.map(b => ({ label: `解答用紙・画像「${b.name}」`, text: b.lines.join('\n'), ta: 'ocrA', offset: b.headerLine + 1 }))
           ];
           proofSources.forEach(sheet => {
             if (!sheet.text.trim()) return;
             checkTyposAndKanji(sheet.text).forEach(t => {
-              issues.push({
-                level: t.level,
-                category: `${t.category}（${sheet.label}）`,
-                detail: t.detail
-              });
+              const issue = { level: t.level, category: `${t.category}（${sheet.label}）`, detail: t.detail };
+              if (t.lineIndex != null) {
+                const absLine = sheet.offset + t.lineIndex;
+                issue.src = { ta: sheet.ta, absLine };
+                if (t.wrong && t.fix) {
+                  issue.wrong = t.wrong;
+                  issue.fix = t.fix;
+                }
+                state.marks[sheet.ta].push({ line: absLine, wrong: t.wrong || null, level: t.level });
+              }
+              issues.push(issue);
             });
           });
         }
@@ -1139,6 +1659,18 @@
           let statusHtml = '<span class="px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-xs font-bold">OK</span>';
 
           if (el.chkConsistency.checked) {
+            [['問題用紙', q], ['解答用紙', a]].forEach(([lab, it]) => {
+              if (!it) return;
+              const gaps = findChoiceGap(it.choices);
+              if (gaps.length) {
+                issues.push({
+                  level: 'warn',
+                  category: '選択肢記号の飛び',
+                  detail: `${lab}の「${key}」で選択肢が ${it.choices.join('・')} と並んでおり、${gaps.join('・')} が抜けています。`
+                });
+              }
+            });
+
             if (q && !a) {
               issues.push({
                 level: 'error',
@@ -1198,6 +1730,44 @@
           });
         });
 
+        // 3.5 正答・解答例との照合（入力がある場合のみ）
+        if (el.chkConsistency.checked && el.textKey.value.trim()) {
+          const keyNorm = el.textKey.value.replace(/(問\s*[0-9０-９]+)\s*[:：=＝]\s*/g, '$1 ');
+          const keyItems = parseQuestionsFromText(keyNorm);
+          const noKey = qItems.filter(q => !keyItems.some(k => k.key === q.key));
+          if (noKey.length) {
+            issues.push({
+              level: 'warn',
+              category: '正答の未入力',
+              detail: `問題用紙の ${noKey.map(i => i.key).join('、')} に対応する正答が入力されていません。`
+            });
+          }
+          keyItems.forEach(k => {
+            const q = qItems.find(i => i.key === k.key);
+            if (!q) {
+              issues.push({
+                level: 'error',
+                category: '対応する問題がない正答',
+                detail: `正答欄にある「${k.key}」に対応する問題が問題用紙に見当たりません。`
+              });
+              return;
+            }
+            if (q.choices.length) {
+              const ans = k.raw.replace(/^(?:問|設問)\s*[0-9]+\s*/, '').replace(/\(\s*[0-9]+\s*点\s*\)/g, '').trim();
+              if (/^[ア-オカキA-E・,、\s]+$/.test(ans)) {
+                const bad = (ans.match(/[ア-オカキA-E]/g) || []).filter(sym => !q.choices.includes(sym));
+                if (bad.length) {
+                  issues.push({
+                    level: 'error',
+                    category: '正答が選択肢にない',
+                    detail: `「${k.key}」の正答 ${bad.join('・')} が、問題用紙の選択肢（${q.choices.join('・')}）にありません。`
+                  });
+                }
+              }
+            }
+          });
+        }
+
         // 4. 目標合計点（満点）チェック
         if (el.chkScore.checked) {
           const targetTotal = parseInt(el.inputScore.value, 10) || 100;
@@ -1229,12 +1799,29 @@
               detail: `目標合計点は ${targetTotal}点 ですが、解答用紙から読み取れた配点の合計は ${sumA}点 です（${diff > 0 ? diff + '点不足' : Math.abs(diff) + '点超過'}）。`
             });
           }
+
+          const qt = sectionTotals(qItems);
+          const at = sectionTotals(aItems);
+          Object.keys(qt).forEach(sec => {
+            if (at[sec] !== undefined && at[sec] !== qt[sec]) {
+              issues.push({
+                level: 'warn',
+                category: '大問ごとの配点合計の不一致',
+                detail: `「${sec}」の配点合計が問題用紙（${qt[sec]}点）と解答用紙（${at[sec]}点）で異なります。`
+              });
+            }
+          });
         }
 
         state.latestIssues = issues;
         state.currentFilter = 'all';
         updateFilterButtons();
         renderResults(issues, compRows);
+        renderSectionTotals(qItems, aItems);
+        const fixable = issues.filter(i => i.fix && i.wrong && i.src);
+        el.btnApplyAll.textContent = `修正案をすべて適用（${fixable.length}件）`;
+        el.btnApplyAll.classList.toggle('hidden', fixable.length === 0);
+        refreshAllHighlights();
         el.progressBar.style.width = '100%';
         showToast('校正・整合性チェックが完了しました');
       } catch (err) {
@@ -1246,7 +1833,9 @@
           el.btnCheck.disabled = false;
         }, 300);
       }
-    });
+    }
+
+    el.btnCheck.addEventListener('click', () => runCheck());
 
     function updateFilterButtons() {
       document.querySelectorAll('.filter-btn').forEach(btn => {
@@ -1315,15 +1904,18 @@
       } else {
         el.issuesList.innerHTML = filtered.map(issue => {
           const isErr = issue.level === 'error';
+          const idx = issues.indexOf(issue);
+          const canApply = !!(issue.fix && issue.wrong && issue.src);
           return `
             <div class="p-4 rounded-xl border ${isErr ? 'bg-rose-50 border-rose-200' : 'bg-amber-50 border-amber-200'} flex items-start gap-3">
               <span class="px-2.5 py-0.5 rounded-md text-xs font-bold shrink-0 mt-0.5 ${isErr ? 'bg-rose-600 text-white' : 'bg-amber-500 text-white'}">
                 ${isErr ? '要修正' : '確認推奨'}
               </span>
-              <div class="space-y-1">
+              <div class="space-y-1 flex-1 min-w-0">
                 <div class="text-xs font-bold ${isErr ? 'text-rose-900' : 'text-amber-900'}">${escapeHtml(issue.category)}</div>
                 <p class="text-sm ${isErr ? 'text-rose-800' : 'text-amber-800'}">${escapeHtml(issue.detail)}</p>
               </div>
+              ${canApply ? `<button type="button" data-apply="${idx}" class="no-print shrink-0 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg transition">修正を適用</button>` : ''}
             </div>
           `;
         }).join('');
@@ -1363,6 +1955,8 @@
       el.resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
+    restoreState();
+    refreshAllHighlights();
     updateEditorUI();
   </script>
 </body>

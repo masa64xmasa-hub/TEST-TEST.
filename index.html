@@ -610,15 +610,16 @@
       showToast('入力内容をすべてクリアしました');
     });
 
+    // 画像ごとに文字を読み取り、[{name, text}] を返す（空行は除去し、画像上の行順に番号が合うようにする）
     async function extractTextFromImages(images, label) {
-      if (!images.length) return '';
-      let combined = '';
+      const results = [];
       for (let i = 0; i < images.length; i++) {
         el.progressText.textContent = `${label}の画像（${i + 1}/${images.length}枚目）から文字を読み取り中...`;
         const res = await Tesseract.recognize(images[i].dataUrl, 'jpn+eng');
-        combined += '\n' + (res.data.text || '');
+        const text = (res.data.text || '').split(/\r?\n/).filter(l => l.trim()).join('\n');
+        results.push({ name: images[i].name, text });
       }
-      return combined;
+      return results;
     }
 
     function toHalfWidthNum(str) {
@@ -645,6 +646,19 @@
         .replace(/第\s*([0-9一二三四五六七八九十]+)\s*問/g, '第$1問')
         .replace(/問\s+([0-9]+)/g, '問$1')
         .replace(/各\s*([0-9]+)\s*点/g, '各$1点');
+    }
+
+    // 選択肢記号（ア〜オ・A〜E）の検出。OCRで「エ→工」「オ→才」と誤読されやすい記号も補正する
+    function detectChoices(block) {
+      const text = block
+        .replace(/(^|[\s　\[(・])工(?=[\s　\])・\/|]|$)/g, '$1エ')
+        .replace(/(^|[\s　\[(・])才(?=[\s　\])・\/|]|$)/g, '$1オ');
+      const order = ['ア', 'イ', 'ウ', 'エ', 'オ', 'カ', 'キ', 'A', 'B', 'C', 'D', 'E'];
+      const found = order.filter(ch =>
+        new RegExp(`(?:^|[\\s　\\[(・/|])${ch}(?=[\\s　\\])・/|.]|[ぁ-んー一-龥々]|$)`).test(text)
+      );
+      // 記号が1つだけ見つかった場合は選択肢ではなく文中の文字とみなす
+      return found.length >= 2 ? found : [];
     }
 
     function parseQuestionsFromText(rawText) {
@@ -714,22 +728,7 @@
             lookaheadBlock += ' ' + nextL;
           }
 
-          const choices = [];
-          ['ア', 'イ', 'ウ', 'エ', 'オ', 'カ', 'キ', 'A', 'B', 'C', 'D', 'E'].forEach(ch => {
-            const hasSymbol = new RegExp(`(^|[\\s　\\[・\\(\\/\\|]|—|-|^)${ch}(?=[\\s　\\]・\\)\\/\\|]|[^a-zA-Z\u3000-\u9faf]|$)`, 'i');
-            if (hasSymbol.test(lookaheadBlock) || lookaheadBlock.includes(ch)) {
-              if (!choices.includes(ch)) choices.push(ch);
-            }
-          });
-
-          ['ア', 'イ', 'ウ', 'エ', 'オ'].forEach(sym => {
-            if (lookaheadBlock.includes(sym) && !choices.includes(sym)) {
-              choices.push(sym);
-            }
-          });
-
-          const orderMap = { 'ア': 1, 'イ': 2, 'ウ': 3, 'エ': 4, 'オ': 5, 'カ': 6, 'キ': 7, 'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5 };
-          choices.sort((a, b) => (orderMap[a] || 99) - (orderMap[b] || 99));
+          const choices = detectChoices(lookaheadBlock);
 
           items.push({
             key,
@@ -839,7 +838,7 @@
     const PATTERN_RULES = [
       { re: /答(?:え|なさい)?なさ(?![いそ])|(?:選び|求め|書き|述べ|説明し|示し)なさ(?![いそ])/g, fix: null, cat: CAT.TYPO, level: 'error', tier: 'core', msg: '「なさい」の語尾が欠けている可能性があります。' },
       { re: /(?<=[一-龥ァ-ヶ])([をがにでのは])\1/g, fix: m => m[0], cat: CAT.TYPO, level: 'warn', tier: 'core', msg: '助詞が重複しています。' },
-      { re: /([ぁ-んァ-ヶ一-龥])\1{2,}/g, fix: null, cat: CAT.TYPO, level: 'warn', tier: 'core', msg: '同じ文字が3回以上連続しています。入力ミスでないか確認してください。' },
+      { re: /([ぁ-ん一-龥])\1{2,}/g, fix: null, cat: CAT.TYPO, level: 'warn', tier: 'core', msg: '同じ文字が3回以上連続しています。入力ミスでないか確認してください。' },
       { re: /。。+/g, fix: '。', cat: CAT.PUNCT, level: 'error', tier: 'core', msg: '句点が重複しています。' },
       { re: /、、+/g, fix: '、', cat: CAT.PUNCT, level: 'error', tier: 'core', msg: '読点が重複しています。' },
       { re: /[，]{2,}/g, fix: '，', cat: CAT.PUNCT, level: 'error', tier: 'core', msg: '読点が重複しています。' },
@@ -895,7 +894,8 @@
 
     // OCR結果などで文字間に入った空白を詰める（辞書照合用）
     function compactJp(line) {
-      return line.replace(new RegExp(`([${JP_CHARS}])[ \\t\\u3000]+(?=[${JP_CHARS}])`, 'g'), '$1');
+      const J = `[${JP_CHARS}。、，．（）【】「」『』]`;
+      return line.replace(new RegExp(`(?<=${J})[ \\t\\u3000]+|[ \\t\\u3000]+(?=${J})`, 'g'), '');
     }
 
     function clipText(s, n = 40) {
@@ -906,7 +906,7 @@
     function makeExcerpt(line, start, len) {
       const pre = line.slice(Math.max(0, start - 10), start);
       const post = line.slice(start + len, start + len + 10);
-      return `${start > 10 ? '…' : ''}${pre}【${line.substr(start, len)}】${post}${start + len + 10 < line.length ? '…' : ''}`;
+      return `${start > 10 ? '…' : ''}${pre}《${line.substr(start, len)}》${post}${start + len + 10 < line.length ? '…' : ''}`;
     }
 
     // ① 辞書・パターンルールの適用
@@ -1047,13 +1047,13 @@
       el.progressBar.style.width = '20%';
 
       try {
-        const ocrQ = await extractTextFromImages(state.questionImages, '問題用紙');
+        const ocrQList = await extractTextFromImages(state.questionImages, '問題用紙');
         el.progressBar.style.width = '55%';
-        const ocrA = await extractTextFromImages(state.answerImages, '解答用紙');
+        const ocrAList = await extractTextFromImages(state.answerImages, '解答用紙');
         el.progressBar.style.width = '80%';
 
-        const fullQ = (rawQ + '\n' + ocrQ).trim();
-        const fullA = (rawA + '\n' + ocrA).trim();
+        const fullQ = (rawQ + '\n' + ocrQList.map(o => o.text).join('\n')).trim();
+        const fullA = (rawA + '\n' + ocrAList.map(o => o.text).join('\n')).trim();
 
         el.progressText.textContent = '漢字・誤字脱字・設問番号・配点・整合性をスマート解析中...';
 
@@ -1061,11 +1061,15 @@
 
         // 1. 漢字・送りがな・誤字脱字・括弧チェック
         if (el.chkTypos.checked) {
-          [
-            { label: '問題用紙', text: fullQ },
-            { label: '解答用紙', text: fullA }
-          ].forEach(sheet => {
-            if (!sheet.text) return;
+          // 入力テキストと画像ごとのOCR結果を別々に校正し、行番号が元の場所と対応するようにする
+          const proofSources = [
+            { label: '問題用紙', text: rawQ },
+            ...ocrQList.map(o => ({ label: `問題用紙・画像「${o.name}」`, text: o.text })),
+            { label: '解答用紙', text: rawA },
+            ...ocrAList.map(o => ({ label: `解答用紙・画像「${o.name}」`, text: o.text }))
+          ];
+          proofSources.forEach(sheet => {
+            if (!sheet.text.trim()) return;
             checkTyposAndKanji(sheet.text).forEach(t => {
               issues.push({
                 level: t.level,
@@ -1156,13 +1160,26 @@
                 const qCh = q.choices.join('・');
                 const aCh = a.choices.join('・');
                 if (qCh !== aCh) {
+                  const onlyA = a.choices.filter(c => !q.choices.includes(c));
+                  const onlyQ = q.choices.filter(c => !a.choices.includes(c));
+                  const diff = [
+                    onlyA.length ? `解答用紙にだけある選択肢: ${onlyA.join('・')}` : '',
+                    onlyQ.length ? `問題用紙にだけある選択肢: ${onlyQ.join('・')}` : ''
+                  ].filter(Boolean).join(' / ');
                   issues.push({
                     level: 'error',
                     category: '選択肢のずれ',
-                    detail: `「${key}」の選択肢が一致しません（問題用紙: [${qCh}] / 解答用紙: [${aCh}]）。`
+                    detail: `「${key}」の選択肢が一致しません（問題用紙: [${qCh}] / 解答用紙: [${aCh}]）。${diff}`
                   });
                   statusHtml = '<span class="px-2.5 py-0.5 rounded-md bg-amber-100 text-amber-800 text-xs font-bold">選択肢ずれ</span>';
                 }
+              } else if (q.choices.length === 0 && a.choices.length > 0) {
+                issues.push({
+                  level: 'warn',
+                  category: '選択肢の記載漏れ',
+                  detail: `「${key}」の解答用紙には選択肢（${a.choices.join('・')}）がありますが、問題用紙に選択肢が見当たりません。`
+                });
+                statusHtml = '<span class="px-2.5 py-0.5 rounded-md bg-amber-100 text-amber-800 text-xs font-bold">選択肢なし</span>';
               }
               if (q.points !== null && a.points !== null && q.points !== a.points) {
                 issues.push({

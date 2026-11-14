@@ -27,7 +27,6 @@
       border-color: #3b82f6 !important;
       background-color: #eff6ff !important;
     }
-    /* 広告枠のレスポンシブ横スクロール用カスタムスクロールバー */
     .ad-scroll::-webkit-scrollbar {
       height: 4px;
     }
@@ -35,7 +34,6 @@
       background: #cbd5e1;
       border-radius: 4px;
     }
-    /* 行番号のスクロールバー非表示 */
     .line-numbers::-webkit-scrollbar {
       display: none;
     }
@@ -73,7 +71,7 @@
     </div>
   </header>
 
-  <!-- 広告スペース（ヘッダー下部：忍者AdMax 非同期タグ） -->
+  <!-- 広告スペース（ヘッダー下部） -->
   <div class="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 mt-4 flex justify-center">
     <div class="w-full max-w-[740px] min-h-[98px] bg-slate-100/80 border border-slate-200 rounded-xl flex items-center justify-center overflow-x-auto ad-scroll p-1">
       <!-- admax -->
@@ -100,7 +98,6 @@
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
-        <!-- 合計点チェック -->
         <div class="flex flex-wrap items-center gap-2 bg-indigo-50/60 border border-indigo-100 px-3 py-2.5 rounded-xl">
           <label class="inline-flex items-center gap-2 cursor-pointer select-none">
             <input id="chk-total-score" type="checkbox" checked class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" />
@@ -112,27 +109,43 @@
           </div>
         </div>
 
-        <!-- 誤字脱字・表記ゆれ・括弧チェック -->
         <label class="flex items-center gap-2.5 bg-slate-50 border border-slate-200/80 px-3 py-2.5 rounded-xl cursor-pointer select-none hover:bg-slate-100/70 transition">
           <input id="chk-typos" type="checkbox" checked class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" />
-          <span class="text-xs font-medium text-slate-700">誤字脱字・表記ゆれ・括弧閉じ忘れ</span>
+          <span class="text-xs font-medium text-slate-700">漢字・送りがな・誤字脱字・括弧ミス</span>
         </label>
 
-        <!-- 設問番号の連番・重複チェック -->
         <label class="flex items-center gap-2.5 bg-slate-50 border border-slate-200/80 px-3 py-2.5 rounded-xl cursor-pointer select-none hover:bg-slate-100/70 transition">
           <input id="chk-numbering" type="checkbox" checked class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" />
           <span class="text-xs font-medium text-slate-700">設問番号の連番・重複・図表参照</span>
         </label>
 
-        <!-- 問題用紙と解答用紙の整合性チェック -->
         <label class="flex items-center gap-2.5 bg-slate-50 border border-slate-200/80 px-3 py-2.5 rounded-xl cursor-pointer select-none hover:bg-slate-100/70 transition">
           <input id="chk-consistency" type="checkbox" checked class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" />
           <span class="text-xs font-medium text-slate-700">問題・解答欄の整合性・選択肢・配点</span>
         </label>
       </div>
+
+      <!-- 漢字・誤字チェックの詳細設定 -->
+      <div class="flex flex-wrap items-start gap-3 border-t border-slate-100 pt-3">
+        <label class="inline-flex items-center gap-2 text-xs font-medium text-slate-700">
+          <span class="whitespace-nowrap">漢字・誤字チェックの厳しさ</span>
+          <select id="select-strictness" class="border border-slate-300 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="strict">厳格（表記ゆれ・漢字/ひらがな推奨・文末の句点も指摘）</option>
+            <option value="standard">標準（明らかな誤りのみ指摘）</option>
+          </select>
+        </label>
+
+        <details class="flex-1 min-w-[260px] bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+          <summary class="text-xs font-medium text-slate-700 cursor-pointer select-none">ユーザー辞書（よくある誤表記を登録して自動チェック）</summary>
+          <div class="mt-2 space-y-1.5">
+            <textarea id="text-custom-dict" rows="4" placeholder="1行に1件、「誤り=正しい表記」の形式で登録します。&#10;例）&#10;水容液=水溶液&#10;# 先頭が # の行はコメントです" class="w-full px-3 py-2 text-xs font-mono-editor border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"></textarea>
+            <p class="text-[11px] text-slate-400">登録内容はこのブラウザに保存され、次回以降も使われます。「誤り」だけを書くと修正案なしで指摘します。</p>
+          </div>
+        </details>
+      </div>
     </section>
 
-    <!-- 入力エリア（左右2カラム：行番号付きハイブリッドエディタ） -->
+    <!-- 入力エリア（左右2カラム） -->
     <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       
       <!-- 左：問題用紙 -->
@@ -152,16 +165,14 @@
         </div>
 
         <p class="text-xs text-slate-500 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
-          テキスト入力、画像ドラッグ＆ドロップ、またはこの枠内で <kbd class="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[11px] font-mono">Ctrl+V</kbd>（Macは <kbd class="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[11px] font-mono">Cmd+V</kbd>）で画像を直接貼り付けられます。
+          テキスト入力、画像ドラッグ＆ドロップ、またはこの枠内で <kbd class="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[11px] font-mono">Ctrl+V</kbd> で画像を直接貼り付けられます。
         </p>
 
-        <!-- 行番号付きエディタ -->
         <div class="relative flex rounded-xl border border-slate-300 overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 bg-white">
           <div id="lines-question" aria-hidden="true" class="line-numbers select-none bg-slate-50 text-slate-400 text-right py-3.5 px-2.5 text-xs sm:text-sm leading-relaxed font-mono-editor border-r border-slate-200 overflow-y-hidden w-10 shrink-0">1</div>
-          <textarea id="text-question" rows="13" placeholder="ここに問題用紙のテキストを貼り付けるか、画像をドロップ／貼り付けしてください...&#10;例：&#10;【大問1】次の問いに答えなさい。（各5点）&#10;問1 地球の自転によって起こる現象を選びなさい。" class="w-full py-3.5 px-3 text-xs sm:text-sm leading-relaxed font-mono-editor focus:outline-none resize-y border-0"></textarea>
+          <textarea id="text-question" rows="13" placeholder="ここに問題用紙のテキストを貼り付けてください..." class="w-full py-3.5 px-3 text-xs sm:text-sm leading-relaxed font-mono-editor focus:outline-none resize-y border-0"></textarea>
         </div>
 
-        <!-- 問題画像プレビュー -->
         <div id="preview-question" class="flex flex-wrap gap-3 empty:hidden"></div>
       </div>
 
@@ -182,16 +193,14 @@
         </div>
 
         <p class="text-xs text-slate-500 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
-          テキスト入力、画像ドラッグ＆ドロップ、またはこの枠内で <kbd class="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[11px] font-mono">Ctrl+V</kbd>（Macは <kbd class="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[11px] font-mono">Cmd+V</kbd>）で画像を直接貼り付けられます。
+          テキスト入力、画像ドラッグ＆ドロップ、またはこの枠内で <kbd class="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[11px] font-mono">Ctrl+V</kbd> で画像を直接貼り付けられます。
         </p>
 
-        <!-- 行番号付きエディタ -->
         <div class="relative flex rounded-xl border border-slate-300 overflow-hidden focus-within:ring-2 focus-within:ring-emerald-500 bg-white">
           <div id="lines-answer" aria-hidden="true" class="line-numbers select-none bg-slate-50 text-slate-400 text-right py-3.5 px-2.5 text-xs sm:text-sm leading-relaxed font-mono-editor border-r border-slate-200 overflow-y-hidden w-10 shrink-0">1</div>
-          <textarea id="text-answer" rows="13" placeholder="ここに解答用紙のテキストを貼り付けるか、画像をドロップ／貼り付けしてください...&#10;例：&#10;【大問1】&#10;問1 [ ア ・ イ ・ ウ ・ エ ] （5点）" class="w-full py-3.5 px-3 text-xs sm:text-sm leading-relaxed font-mono-editor focus:outline-none resize-y border-0"></textarea>
+          <textarea id="text-answer" rows="13" placeholder="ここに解答用紙のテキストを貼り付けてください..." class="w-full py-3.5 px-3 text-xs sm:text-sm leading-relaxed font-mono-editor focus:outline-none resize-y border-0"></textarea>
         </div>
 
-        <!-- 解答画像プレビュー -->
         <div id="preview-answer" class="flex flex-wrap gap-3 empty:hidden"></div>
       </div>
 
@@ -225,14 +234,12 @@
           </div>
 
           <div class="flex flex-wrap items-center gap-2">
-            <!-- フィルターボタン -->
             <div class="inline-flex rounded-xl bg-slate-100 p-1 text-xs font-medium" role="group">
               <button type="button" data-filter="all" class="filter-btn px-3 py-1.5 rounded-lg bg-white text-slate-900 shadow-sm transition">すべて</button>
               <button type="button" data-filter="error" class="filter-btn px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition">要修正のみ</button>
               <button type="button" data-filter="warn" class="filter-btn px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition">確認推奨のみ</button>
             </div>
 
-            <!-- レポートコピーボタン -->
             <button id="btn-copy-report" type="button" class="text-xs bg-indigo-50 hover:bg-indigo-100 active:bg-indigo-200 text-indigo-700 border border-indigo-200 font-bold px-3.5 py-2 rounded-xl transition inline-flex items-center gap-1.5">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
@@ -269,7 +276,7 @@
 
   </main>
 
-  <!-- 広告スペース（フッター上部：忍者AdMax 非同期タグ） -->
+  <!-- 広告スペース（フッター上部） -->
   <div class="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 mb-6 flex justify-center">
     <div class="w-full max-w-[740px] min-h-[98px] bg-slate-100/80 border border-slate-200 rounded-xl flex items-center justify-center overflow-x-auto ad-scroll p-1">
       <!-- admax -->
@@ -298,13 +305,10 @@
     </div>
   </div>
 
-  <!-- トースト通知（alertの代替） -->
+  <!-- トースト通知 -->
   <div id="toast" class="fixed bottom-5 right-5 z-50 hidden bg-slate-900 text-white text-sm px-4 py-3 rounded-xl shadow-lg transition-opacity duration-300 max-w-sm"></div>
 
   <script>
-    // ==========================================
-    // アプリケーション状態・DOM要素の参照管理
-    // ==========================================
     const state = {
       questionImages: [],
       answerImages: [],
@@ -330,6 +334,8 @@
       chkTypos: document.getElementById('chk-typos'),
       chkNumbering: document.getElementById('chk-numbering'),
       chkConsistency: document.getElementById('chk-consistency'),
+      selectStrict: document.getElementById('select-strictness'),
+      customDict: document.getElementById('text-custom-dict'),
       btnCheck: document.getElementById('btn-run-check'),
       btnGenSampleImg: document.getElementById('btn-gen-sample-img'),
       btnSample: document.getElementById('btn-load-sample'),
@@ -367,9 +373,6 @@
       }, 3200);
     }
 
-    // ==========================================
-    // 行番号同期＆統計カウンター更新処理
-    // ==========================================
     function updateLineNumbers(textarea, gutter) {
       const lineCount = Math.max(1, textarea.value.split(/\r?\n/).length);
       gutter.innerHTML = Array.from({ length: lineCount }, (_, i) => i + 1).join('<br>');
@@ -392,15 +395,27 @@
     el.textQ.addEventListener('scroll', () => { el.linesQ.scrollTop = el.textQ.scrollTop; });
     el.textA.addEventListener('scroll', () => { el.linesA.scrollTop = el.textA.scrollTop; });
 
-    // 合計点チェックのON/OFF切り替え
     el.chkScore.addEventListener('change', () => {
       el.inputScore.disabled = !el.chkScore.checked;
       el.scoreWrapper.classList.toggle('opacity-40', !el.chkScore.checked);
     });
 
-    // ==========================================
-    // 画像添付・プレビュー・拡大モーダル処理
-    // ==========================================
+    // 校正設定（厳しさ・ユーザー辞書）をブラウザに保存
+    (function initProofreadSettings() {
+      try {
+        const savedDict = localStorage.getItem('testtest_custom_dict');
+        if (savedDict !== null) el.customDict.value = savedDict;
+        const savedStrict = localStorage.getItem('testtest_strictness');
+        if (savedStrict === 'strict' || savedStrict === 'standard') el.selectStrict.value = savedStrict;
+      } catch (e) { /* localStorageが使えない環境では保存しない */ }
+      el.customDict.addEventListener('input', () => {
+        try { localStorage.setItem('testtest_custom_dict', el.customDict.value); } catch (e) {}
+      });
+      el.selectStrict.addEventListener('change', () => {
+        try { localStorage.setItem('testtest_strictness', el.selectStrict.value); } catch (e) {}
+      });
+    })();
+
     function openImageModal(title, src) {
       el.modalImageTitle.textContent = title;
       el.modalImageSrc.src = src;
@@ -480,9 +495,6 @@
       });
     });
 
-    // ==========================================
-    // サンプル画像（Canvas生成）＆サンプルテキスト読込
-    // ==========================================
     function createSheetCanvasImage(title, lines) {
       const canvas = document.createElement('canvas');
       canvas.width = 920;
@@ -562,7 +574,7 @@
 
 問2 光合成が行われる細胞内のつくりを答えなさい。
 
-問4 酸性の水溶液にBTB溶液を加えたときの色を答えなさい。（10点）
+問4 酸性の水容液にBTB溶液を加えたときの色を答えなさい。（10点）
 
 【大問2】日本の地理について答えなさい。
 問1 日本で最も面積が大きい都道府県を答えななさい。（20点）
@@ -598,9 +610,6 @@
       showToast('入力内容をすべてクリアしました');
     });
 
-    // ==========================================
-    // Tesseract.js による画像文字認識（OCR）
-    // ==========================================
     async function extractTextFromImages(images, label) {
       if (!images.length) return '';
       let combined = '';
@@ -612,9 +621,6 @@
       return combined;
     }
 
-    // ==========================================
-    // テキスト正規化・設問・選択肢・配点スマートパース処理
-    // ==========================================
     function toHalfWidthNum(str) {
       return str.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
     }
@@ -626,7 +632,6 @@
       return isNaN(parsed) ? null : parsed;
     }
 
-    // OCR特有の不要なスペースや記号ブレを賢く正規化する
     function normalizeOcrText(text) {
       return text
         .replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0))
@@ -651,9 +656,10 @@
       let defaultSectionPoints = null;
       let lastQuestionNumInSection = 0;
 
-      lines.forEach((line, idx) => {
-        // 大問の見出し検出（【大問1】、大問2、第2問、2. など）
-        const secMatch = line.match(/(?:【|\[)?\s*(?:大問|第)\s*([0-9一二三四五六七八九十]+)\s*(?:問|】|\])?/);
+      for (let idx = 0; idx < lines.length; idx++) {
+        const line = lines[idx];
+
+        const secMatch = line.match(/(?:【|\[)?\s*(?:大問|第)\s*([0-9一二三四五六七八九十]+)\s*(?:問|】|】)?/);
         const topNumSecMatch = line.match(/^([0-9]+)\s*[\.．]\s*(?:次の|日本|以下|計算|英語|理科|社会|国語|数学)/);
 
         if (secMatch && (line.includes('大問') || /^【.*】/.test(line) || /^第[0-9一二三四五]+問/.test(line))) {
@@ -663,30 +669,28 @@
             currentSection = `大問${currentSectionNum}`;
             lastQuestionNumInSection = 0;
           }
-          // 見出し行にある「(各10点)」を取得
           const eachPt = line.match(/各([0-9]+)点/);
           defaultSectionPoints = eachPt ? parseInt(eachPt[1], 10) : null;
+          continue;
         } else if (topNumSecMatch) {
           currentSectionNum = parseInt(topNumSecMatch[1], 10);
           currentSection = `大問${currentSectionNum}`;
           lastQuestionNumInSection = 0;
           const eachPt = line.match(/各([0-9]+)点/);
           defaultSectionPoints = eachPt ? parseInt(eachPt[1], 10) : null;
+          continue;
         } else {
-          // 大問見出しの直後の行に「(各10点)」が書かれている場合も拾う
           const eachPtLine = line.match(/^\(?各([0-9]+)点\)?$/);
           if (eachPtLine) {
             defaultSectionPoints = parseInt(eachPtLine[1], 10);
+            continue;
           }
         }
 
-        // 小問番号の検出（問1、(1)、設問1 など）
         const qMatch = line.match(/^(?:問|設問|\()\s*([0-9]+)\s*(?:\)|\.|．|\s|\[|【|$)/);
         if (qMatch) {
           const num = parseInt(qMatch[1], 10);
 
-          // OCRで大問見出しが読み飛ばされた場合の自動推測：
-          // すでに問2以上が出ていたのに急に「問1」が再登場したら次の大問へ自動遷移
           if (num === 1 && lastQuestionNumInSection >= 2) {
             currentSectionNum++;
             currentSection = `大問${currentSectionNum}`;
@@ -696,29 +700,36 @@
 
           const key = `${currentSection}-問${num}`;
 
-          // 配点の抽出（個別配点があれば優先、なければ大問の「各X点」を適用）
           let points = defaultSectionPoints;
           const ptMatch = line.match(/(?:配点)?\s*([0-9]+)\s*点/);
           if (ptMatch && !line.includes('各')) {
             points = parseInt(ptMatch[1], 10);
           }
 
-          // 選択肢の抽出（次の設問や大問が始まる手前までの複数行をスキャン）
-          let lookahead = line;
-          for (let j = idx + 1; j < Math.min(idx + 5, lines.length); j++) {
+          let lookaheadBlock = line;
+          for (let j = idx + 1; j < lines.length; j++) {
             const nextL = lines[j];
             if (/^(?:【|\[)?\s*(?:大問|第)\s*[0-9一二三四五六七八九十]+/.test(nextL)) break;
             if (/^(?:問|設問|\()\s*[0-9]+\s*(?:\)|\.|．|\s|\[|【|$)/.test(nextL)) break;
-            lookahead += ' ' + nextL;
+            lookaheadBlock += ' ' + nextL;
           }
 
           const choices = [];
           ['ア', 'イ', 'ウ', 'エ', 'オ', 'カ', 'キ', 'A', 'B', 'C', 'D', 'E'].forEach(ch => {
-            const re = new RegExp(`(?:^|[\\s\\[・(])${ch}(?:[\\s\\]・)]|$)`);
-            if (re.test(lookahead)) {
-              choices.push(ch);
+            const hasSymbol = new RegExp(`(^|[\\s　\\[・\\(\\/\\|]|—|-|^)${ch}(?=[\\s　\\]・\\)\\/\\|]|[^a-zA-Z\u3000-\u9faf]|$)`, 'i');
+            if (hasSymbol.test(lookaheadBlock) || lookaheadBlock.includes(ch)) {
+              if (!choices.includes(ch)) choices.push(ch);
             }
           });
+
+          ['ア', 'イ', 'ウ', 'エ', 'オ'].forEach(sym => {
+            if (lookaheadBlock.includes(sym) && !choices.includes(sym)) {
+              choices.push(sym);
+            }
+          });
+
+          const orderMap = { 'ア': 1, 'イ': 2, 'ウ': 3, 'エ': 4, 'オ': 5, 'カ': 6, 'キ': 7, 'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5 };
+          choices.sort((a, b) => (orderMap[a] || 99) - (orderMap[b] || 99));
 
           items.push({
             key,
@@ -726,17 +737,302 @@
             num,
             raw: line,
             points,
-            choices: [...new Set(choices)]
+            choices
           });
         }
-      });
+      }
 
       return items;
     }
 
-    // ==========================================
-    // 校正・整合性チェック実行処理
-    // ==========================================
+    // ==========================================================
+    // 漢字・送りがな・誤字脱字 自動判定エンジン
+    // 構成：①辞書ルール ②パターンルール ③括弧の対応 ④行ごとの書式
+    // ==========================================================
+    // ===== PROOFREAD ENGINE START =====
+    const JP_CHARS = 'ぁ-んァ-ヶ一-龥々ー';
+
+    const CAT = {
+      OKURI: '送り仮名の誤り',
+      TYPO: '誤字・変換ミス',
+      OLD: '旧字体・異体字の混入',
+      STYLE: '表記ゆれ・表記の統一',
+      KANJI: '漢字表記の推奨',
+      KANA: 'ひらがな表記の推奨',
+      PUNCT: '句読点・記号の誤り',
+      CHAR: '文字種・入力ミス',
+      BRACKET: '括弧の対応ミス',
+      WORDY: '重複・冗長な表現',
+      RA: 'ら抜き言葉',
+      USER: 'ユーザー辞書'
+    };
+
+    function escapeRegExp(s) {
+      return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    // [誤り, 正しい表記, 補足メッセージ(省略可)]
+    const OKURI_HARD = [
+      ['選らび', '選び'], ['次ぎ', '次'], ['表わ', '表'], ['現わ', '現'], ['断わ', '断'],
+      ['幸わせ', '幸せ'], ['暖たかい', '暖かい'], ['温たかい', '温かい'], ['柔かい', '柔らかい'],
+      ['軟かい', '軟らかい'], ['難かしい', '難しい'], ['確める', '確かめる'], ['考がえ', '考え'],
+      ['教しえ', '教え'], ['始じめ', '始め'], ['集つめ', '集め'], ['厳びしい', '厳しい'],
+      ['新たらしい', '新しい'], ['必らず', '必ず'], ['少い', '少ない']
+    ];
+    // 旧来の送り仮名（現在は許容・非推奨）
+    const OKURI_SOFT = [
+      ['終る', '終わる'], ['始る', '始まる'], ['起る', '起こる'], ['変る', '変わる'],
+      ['行なう', '行う'], ['行なわ', '行わ'], ['行ない', '行い']
+    ];
+    // 誤字・変換ミス・理科社会数学でよくある誤記
+    const TYPO_HARD = [
+      ['ななさい', 'なさい', '文字が重複しています。'],
+      ['答なさい', '答えなさい', '送り仮名が抜けています。'],
+      ['づつ', 'ずつ', '「ずつ」が正しい表記です。'],
+      ['いづれ', 'いずれ', '「いずれ」が正しい表記です。'],
+      ['水容液', '水溶液'], ['水用液', '水溶液'], ['容解', '溶解'], ['屈析', '屈折'], ['飽合', '飽和'],
+      ['直例', '直列'], ['並例', '並列'], ['光号成', '光合成'],
+      ['三権分率', '三権分立'], ['国民主件', '国民主権'], ['都道府件', '都道府県'],
+      ['平衡四辺形', '平行四辺形'], ['三角計', '三角形'], ['四角計', '四角形'],
+      ['長方計', '長方形'], ['正方計', '正方形'], ['円周立', '円周率'],
+      ['線対象', '線対称'], ['点対象', '点対称'], ['左右対象', '左右対称'],
+      ['異句同音', '異口同音'], ['絶対絶命', '絶体絶命'], ['責任転化', '責任転嫁'],
+      ['危機一発', '危機一髪'], ['晴天白日', '青天白日'], ['完壁', '完璧']
+    ];
+    // 表記ゆれ（解答用紙の統一など）
+    const STYLE_WORDS = [
+      ['回答用紙', '解答用紙', 'テストでは「解答用紙」に統一することを推奨します。'],
+      ['回答欄', '解答欄', 'テストでは「解答欄」に統一することを推奨します。'],
+      ['膨脹', '膨張', '現在は「膨張」が一般的な表記です。']
+    ];
+    // ひらがな → 漢字の推奨
+    const KANJI_WORDS = [
+      ['もとめて', '求めて'], ['もとめなさい', '求めなさい'], ['えらびなさい', '選びなさい'],
+      ['こたえなさい', '答えなさい'], ['かきなさい', '書きなさい'], ['よみなさい', '読みなさい'],
+      ['あらわしなさい', '表しなさい'], ['のべなさい', '述べなさい'], ['うめなさい', '埋めなさい'],
+      ['つぎの', '次の'], ['ただしい', '正しい'], ['あやまって', '誤って'], ['あやまり', '誤り'],
+      ['ならべかえ', '並べ替え'], ['ひとつ', '一つ'], ['ふたつ', '二つ']
+    ];
+    // 漢字 → ひらがなの推奨（公用文の表記）
+    const KANA_WORDS = [
+      ['下さい', 'ください'], ['宜しく', 'よろしく'], ['是非', 'ぜひ'], ['但し', 'ただし'],
+      ['又は', 'または'], ['若しくは', 'もしくは'], ['何故', 'なぜ'], ['殆ど', 'ほとんど'], ['所謂', 'いわゆる']
+    ];
+    // 旧字体 → 新字体
+    const OLD_KANJI = {
+      '國': '国', '學': '学', '體': '体', '氣': '気', '會': '会', '數': '数', '對': '対', '點': '点',
+      '圖': '図', '變': '変', '邊': '辺', '實': '実', '觀': '観', '驗': '験', '覺': '覚', '轉': '転',
+      '讀': '読', '當': '当', '臺': '台', '廣': '広', '歐': '欧', '醫': '医', '證': '証', '澤': '沢',
+      '齋': '斎', '﨑': '崎', '髙': '高'
+    };
+    // 見た目が似た文字の入れ替え
+    const LOOKALIKE_TO_KANJI = { 'ロ': '口', 'エ': '工', 'ニ': '二', 'ハ': '八', 'タ': '夕', 'カ': '力' };
+    const LOOKALIKE_TO_KANA = { '口': 'ロ', '工': 'エ', '二': 'ニ', '八': 'ハ', '夕': 'タ', '力': 'カ', '一': 'ー' };
+
+    function wordRules(list, cat, level, tier, defaultMsg, raw) {
+      return list.map(([wrong, right, note]) => ({
+        re: new RegExp(escapeRegExp(wrong), 'g'),
+        fix: right, cat, level, tier, raw: !!raw, msg: note || defaultMsg
+      }));
+    }
+
+    const PATTERN_RULES = [
+      { re: /答(?:え|なさい)?なさ(?![いそ])|(?:選び|求め|書き|述べ|説明し|示し)なさ(?![いそ])/g, fix: null, cat: CAT.TYPO, level: 'error', tier: 'core', msg: '「なさい」の語尾が欠けている可能性があります。' },
+      { re: /(?<=[一-龥ァ-ヶ])([をがにでのは])\1/g, fix: m => m[0], cat: CAT.TYPO, level: 'warn', tier: 'core', msg: '助詞が重複しています。' },
+      { re: /([ぁ-んァ-ヶ一-龥])\1{2,}/g, fix: null, cat: CAT.TYPO, level: 'warn', tier: 'core', msg: '同じ文字が3回以上連続しています。入力ミスでないか確認してください。' },
+      { re: /。。+/g, fix: '。', cat: CAT.PUNCT, level: 'error', tier: 'core', msg: '句点が重複しています。' },
+      { re: /、、+/g, fix: '、', cat: CAT.PUNCT, level: 'error', tier: 'core', msg: '読点が重複しています。' },
+      { re: /[，]{2,}/g, fix: '，', cat: CAT.PUNCT, level: 'error', tier: 'core', msg: '読点が重複しています。' },
+      { re: /、。/g, fix: '。', cat: CAT.PUNCT, level: 'error', tier: 'core', msg: '読点と句点が連続しています。' },
+      { re: /。、/g, fix: null, cat: CAT.PUNCT, level: 'warn', tier: 'core', msg: '句点と読点が連続しています。どちらかが不要でないか確認してください。' },
+      { re: /[ｦ-ﾟ]+/g, fix: m => m.normalize('NFKC'), cat: CAT.CHAR, level: 'error', tier: 'core', msg: '半角カタカナが使われています。全角に統一してください。' },
+      { re: new RegExp('[' + Object.keys(OLD_KANJI).join('') + ']', 'g'), fix: m => OLD_KANJI[m], cat: CAT.OLD, level: 'error', tier: 'core', msg: '旧字体・異体字が使われています。' },
+      { re: /(?<=[一-龥])[ロエニハタカ](?=[ぁ-ん一-龥])/g, fix: m => LOOKALIKE_TO_KANJI[m], cat: CAT.CHAR, level: 'warn', tier: 'core', raw: true, msg: 'カタカナと漢字の見間違い（誤入力・OCRの誤認識）の可能性があります。' },
+      { re: /(?<=[ァ-ヶー])[口工二八夕力一](?=[ァ-ヶー])/g, fix: m => LOOKALIKE_TO_KANA[m], cat: CAT.CHAR, level: 'warn', tier: 'core', raw: true, msg: 'カタカナ語の中に漢字が混ざっています（誤入力・OCRの誤認識）の可能性があります。' },
+      { re: /(気温|温度|長さ|身長|距離|面積|体温|角度|高さ|幅|深さ)を(?:計|量)(?=[るりっらせ])/g, fix: m => m.slice(0, -1) + '測', cat: CAT.TYPO, level: 'warn', tier: 'style', msg: '長さ・温度などには「測る」を使います。' },
+      { re: /(重さ|質量|重量|体積|容積|分量|かさ)を(?:測|計)(?=[るりっらせ])/g, fix: m => m.slice(0, -1) + '量', cat: CAT.TYPO, level: 'warn', tier: 'style', msg: '重さ・体積などには「量る」を使います。' },
+      { re: /(時間|タイム|所要時間)を(?:測|量)(?=[るりっらせ])/g, fix: m => m.slice(0, -1) + '計', cat: CAT.TYPO, level: 'warn', tier: 'style', msg: '時間には「計る」を使います。' },
+      { re: /ひらがなで/g, fix: null, cat: CAT.KANA, level: 'warn', tier: 'style', msg: '「ひらがなで」と指定する場合は、解答条件が明確か確認してください。' },
+      { re: /(?:次の|この|その|あの|どの|上の|下の|以下の)様に/g, fix: m => m.replace('様に', 'ように'), cat: CAT.KANA, level: 'warn', tier: 'style', msg: '「ように」とひらがなで書くのが一般的です。' },
+      { re: /出来(?=る|ない|た|ます|れば)/g, fix: 'でき', cat: CAT.KANA, level: 'warn', tier: 'style', msg: '「できる」とひらがなで書くのが一般的です。' },
+      { re: /(?:見|食べ|着|出|来|寝|起き|考え|信じ|借り|降り|覚え)れる/g, fix: m => m.slice(0, -2) + 'られる', cat: CAT.RA, level: 'warn', tier: 'style', msg: 'ら抜き言葉の可能性があります。' },
+      { re: /まず最初(?:に)?/g, fix: m => m.replace('最初', ''), cat: CAT.WORDY, level: 'warn', tier: 'style', msg: '「まず」と「最初」の意味が重複しています。' },
+      { re: /一番最初/g, fix: '最初', cat: CAT.WORDY, level: 'warn', tier: 'style', msg: '意味が重複しています。' },
+      { re: /最も一番/g, fix: '最も', cat: CAT.WORDY, level: 'warn', tier: 'style', msg: '意味が重複しています。' },
+      { re: /必ず必要/g, fix: '必要', cat: CAT.WORDY, level: 'warn', tier: 'style', msg: '意味が重複しています。' },
+      { re: /非常に大変/g, fix: null, cat: CAT.WORDY, level: 'warn', tier: 'style', msg: '程度を表す語が重複しています。' },
+      { re: /約[0-9０-９.]+[^\s。、（）()]{0,4}程度/g, fix: null, cat: CAT.WORDY, level: 'warn', tier: 'style', msg: '「約」と「程度」が重複しています。どちらかにしてください。' },
+      { re: /各(?:都道府県|市町村|学年|班|グループ|県|国)ごと/g, fix: m => m.replace(/ごと$/, ''), cat: CAT.WORDY, level: 'warn', tier: 'style', msg: '「各」と「ごと」が重複しています。' }
+    ];
+
+    const BUILTIN_RULES = [
+      ...wordRules(OKURI_HARD, CAT.OKURI, 'error', 'core', '送り仮名の誤りです。'),
+      ...wordRules(TYPO_HARD, CAT.TYPO, 'error', 'core', '誤字・変換ミスの可能性が高い表記です。'),
+      ...PATTERN_RULES,
+      ...wordRules(OKURI_SOFT, CAT.OKURI, 'warn', 'style', '現在の公用文では別の送り仮名が一般的です（許容されている場合もあります）。'),
+      ...wordRules(STYLE_WORDS, CAT.STYLE, 'warn', 'style', '表記を統一してください。'),
+      ...wordRules(KANJI_WORDS, CAT.KANJI, 'warn', 'style', '漢字表記を推奨します（読み仮名を答えさせる問題など、意図的なひらがなであれば問題ありません）。'),
+      ...wordRules(KANA_WORDS, CAT.KANA, 'warn', 'style', 'ひらがな表記が一般的です。')
+    ];
+
+    // ユーザー辞書（1行1件「誤り=正しい表記」）をルールに変換
+    function parseCustomDict(src) {
+      const rules = [];
+      String(src || '').split(/\r?\n/).forEach(l => {
+        l = l.trim();
+        if (!l || l.startsWith('#')) return;
+        const parts = l.split(/\s*(?:=|＝|→|->|,|，|\t)\s*/);
+        const wrong = parts[0];
+        const right = parts[1] || null;
+        if (!wrong) return;
+        rules.push({
+          re: new RegExp(escapeRegExp(wrong), 'g'),
+          fix: right, cat: CAT.USER, level: 'error', tier: 'core', msg: 'ユーザー辞書に登録された誤表記です。'
+        });
+      });
+      return rules;
+    }
+
+    // OCR結果などで文字間に入った空白を詰める（辞書照合用）
+    function compactJp(line) {
+      return line.replace(new RegExp(`([${JP_CHARS}])[ \\t\\u3000]+(?=[${JP_CHARS}])`, 'g'), '$1');
+    }
+
+    function clipText(s, n = 40) {
+      s = String(s).trim();
+      return s.length > n ? s.slice(0, n) + '…' : s;
+    }
+
+    function makeExcerpt(line, start, len) {
+      const pre = line.slice(Math.max(0, start - 10), start);
+      const post = line.slice(start + len, start + len + 10);
+      return `${start > 10 ? '…' : ''}${pre}【${line.substr(start, len)}】${post}${start + len + 10 < line.length ? '…' : ''}`;
+    }
+
+    // ① 辞書・パターンルールの適用
+    function applyRules(text, rules, strict) {
+      const issues = [];
+      const lines = text.split(/\r?\n/);
+      lines.forEach((rawLine, i) => {
+        if (!rawLine.trim()) return;
+        const compact = compactJp(rawLine);
+        const used = new Set();
+        rules.forEach(rule => {
+          if (rule.tier === 'style' && !strict) return;
+          const target = rule.raw ? rawLine : compact;
+          rule.re.lastIndex = 0;
+          let m;
+          while ((m = rule.re.exec(target)) !== null) {
+            if (m[0] === '') { rule.re.lastIndex++; continue; }
+            const posKey = `${rule.raw ? 'r' : 'c'}${m.index}`;
+            if (used.has(posKey)) continue;
+            used.add(posKey);
+            const fix = typeof rule.fix === 'function' ? rule.fix(m[0]) : rule.fix;
+            if (fix === m[0]) continue;
+            issues.push({
+              level: rule.level,
+              category: rule.cat,
+              detail: `${i + 1}行目：${makeExcerpt(target, m.index, m[0].length)}` +
+                (fix ? ` → 修正案「${fix}」` : '') + `　${rule.msg}`
+            });
+          }
+        });
+      });
+      return issues;
+    }
+
+    // ③ 括弧の対応チェック
+    const BRACKET_GROUPS = [
+      { name: '丸括弧（ ）', open: '（(', close: '）)', perLine: true },
+      { name: '角括弧［ ］', open: '［[', close: '］]', perLine: true },
+      { name: '隅付き括弧【 】', open: '【', close: '】', perLine: true },
+      { name: 'かぎ括弧「 」', open: '「', close: '」', perLine: false },
+      { name: '二重かぎ括弧『 』', open: '『', close: '』', perLine: false }
+    ];
+
+    function checkBrackets(text) {
+      const issues = [];
+      const lines = text.split(/\r?\n/);
+      BRACKET_GROUPS.forEach(g => {
+        let totalO = 0, totalC = 0, perLineFound = false;
+        lines.forEach((raw, i) => {
+          // 「ア)」「1)」のような行頭の項目記号の閉じ括弧は数えない
+          const line = raw.replace(/^\s*[0-9０-９a-zA-Zａ-ｚＡ-Ｚァ-ヶ一二三四五六七八九十]{1,3}[)）]/, '');
+          let depth = 0, o = 0, c = 0, reversed = false;
+          for (const ch of line) {
+            if (g.open.includes(ch)) { depth++; o++; }
+            else if (g.close.includes(ch)) { depth--; c++; if (depth < 0) reversed = true; }
+          }
+          totalO += o; totalC += c;
+          if (g.perLine && (o !== c || reversed)) {
+            perLineFound = true;
+            issues.push({
+              level: 'error', category: CAT.BRACKET,
+              detail: `${i + 1}行目：${g.name}の対応が取れていません（開き${o}個 / 閉じ${c}個）。「${clipText(raw)}」`
+            });
+          }
+        });
+        if (!perLineFound && totalO !== totalC) {
+          issues.push({
+            level: 'error', category: CAT.BRACKET,
+            detail: `${g.name}の数が一致していません（開き${totalO}個 / 閉じ${totalC}個）。`
+          });
+        }
+      });
+      return issues;
+    }
+
+    // ④ 行ごとの書式チェック（数字の全半角・文末の句点・読点の混在）
+    function checkLineFormat(text, strict) {
+      const issues = [];
+      const lines = text.split(/\r?\n/);
+      lines.forEach((raw, i) => {
+        const t = raw.trim();
+        if (!t) return;
+        if (/[０-９]/.test(t) && /[0-9]/.test(t)) {
+          issues.push({
+            level: 'warn', category: CAT.CHAR,
+            detail: `${i + 1}行目：全角数字と半角数字が混在しています。「${clipText(t)}」`
+          });
+        }
+        if (strict) {
+          const body = t.replace(/[（(]\s*(?:各)?[0-9０-９]+\s*点\s*[）)]\s*$/, '').trim();
+          if (/(?:なさい|ください|答えよ|述べよ|選べ|書け|求めよ|せよ)$/.test(body)) {
+            issues.push({
+              level: 'warn', category: CAT.PUNCT,
+              detail: `${i + 1}行目：文末に句点「。」がありません。「${clipText(t)}」`
+            });
+          }
+        }
+      });
+      if (/、/.test(text) && /，/.test(text)) {
+        issues.push({
+          level: 'warn', category: CAT.PUNCT,
+          detail: '読点「、」と「，」が混在しています。どちらかに統一してください。'
+        });
+      }
+      return issues;
+    }
+
+    // 校正エンジン本体
+    function proofread(text, opts = {}) {
+      const strict = opts.strict !== false;
+      const rules = [...(opts.custom || []), ...BUILTIN_RULES];
+      return [
+        ...applyRules(text, rules, strict),
+        ...checkBrackets(text),
+        ...checkLineFormat(text, strict)
+      ];
+    }
+    // ===== PROOFREAD ENGINE END =====
+
+    function checkTyposAndKanji(text) {
+      return proofread(text, {
+        strict: el.selectStrict.value === 'strict',
+        custom: parseCustomDict(el.customDict.value)
+      });
+    }
+
     el.btnCheck.addEventListener('click', async () => {
       const rawQ = el.textQ.value.trim();
       const rawA = el.textA.value.trim();
@@ -759,46 +1055,24 @@
         const fullQ = (rawQ + '\n' + ocrQ).trim();
         const fullA = (rawA + '\n' + ocrA).trim();
 
-        el.progressText.textContent = '誤字脱字・設問番号・配点・整合性をスマート解析中...';
+        el.progressText.textContent = '漢字・誤字脱字・設問番号・配点・整合性をスマート解析中...';
 
         const issues = [];
 
-        // 1. 誤字・表記ゆれ・括弧閉じ忘れチェック
+        // 1. 漢字・送りがな・誤字脱字・括弧チェック
         if (el.chkTypos.checked) {
-          const typoRules = [
-            { pattern: /選らび/g, msg: '誤字：「選らび」→「選び」に修正してください。' },
-            { pattern: /次ぎ/g, msg: '誤字：「次ぎ」→「次」に修正してください。' },
-            { pattern: /ななさい/g, msg: '文字重複：「〜ななさい」→「〜なさい」に修正してください。' },
-            { pattern: /答えななさい/g, msg: '誤字：「答えななさい」→「答えなさい」に修正してください。' },
-            { pattern: /回答用紙/g, msg: '表記ゆれ：テストの解答記入欄を指す場合は「解答用紙」への統一を推奨します。' }
-          ];
-
-          typoRules.forEach(rule => {
-            if (rule.pattern.test(fullQ)) {
-              issues.push({ level: 'error', category: '問題文の誤字・表記', detail: rule.msg });
-            }
-            rule.pattern.lastIndex = 0;
-            if (rule.pattern.test(fullA)) {
-              issues.push({ level: 'warn', category: '解答用紙の表記', detail: rule.msg });
-            }
-            rule.pattern.lastIndex = 0;
-          });
-
-          // 括弧の閉じ忘れチェック（問題用紙・解答用紙それぞれ）
           [
             { label: '問題用紙', text: fullQ },
             { label: '解答用紙', text: fullA }
           ].forEach(sheet => {
             if (!sheet.text) return;
-            const openParens = (sheet.text.match(/（|\(/g) || []).length;
-            const closeParens = (sheet.text.match(/）|\)/g) || []).length;
-            if (openParens !== closeParens) {
+            checkTyposAndKanji(sheet.text).forEach(t => {
               issues.push({
-                level: 'error',
-                category: `書式・括弧ミス（${sheet.label}）`,
-                detail: `${sheet.label}の丸括弧の数が一致していません（開き括弧: ${openParens}個 / 閉じ括弧: ${closeParens}個）。`
+                level: t.level,
+                category: `${t.category}（${sheet.label}）`,
+                detail: t.detail
               });
-            }
+            });
           });
         }
 
@@ -835,7 +1109,6 @@
             });
           });
 
-          // 図・表の参照整合性チェック
           const figMatches = normalizeOcrText(fullQ).match(/(?:図|表)\s*[0-9]+/g) || [];
           const figCounts = {};
           figMatches.forEach(m => {
@@ -879,20 +1152,18 @@
               });
               statusHtml = '<span class="px-2.5 py-0.5 rounded-md bg-rose-100 text-rose-800 text-xs font-bold">問題なし</span>';
             } else if (q && a) {
-              // 選択肢の比較
-              if (q.choices.length > 0 || a.choices.length > 0) {
+              if (q.choices.length > 0 && a.choices.length > 0) {
                 const qCh = q.choices.join('・');
                 const aCh = a.choices.join('・');
                 if (qCh !== aCh) {
                   issues.push({
                     level: 'error',
                     category: '選択肢のずれ',
-                    detail: `「${key}」の選択肢が一致しません（問題用紙: [${qCh || 'なし'}] / 解答用紙: [${aCh || 'なし'}]）。`
+                    detail: `「${key}」の選択肢が一致しません（問題用紙: [${qCh}] / 解答用紙: [${aCh}]）。`
                   });
                   statusHtml = '<span class="px-2.5 py-0.5 rounded-md bg-amber-100 text-amber-800 text-xs font-bold">選択肢ずれ</span>';
                 }
               }
-              // 配点の比較
               if (q.points !== null && a.points !== null && q.points !== a.points) {
                 issues.push({
                   level: 'warn',
@@ -962,9 +1233,6 @@
       }
     });
 
-    // ==========================================
-    // フィルター切り替え＆レポートコピー機能
-    // ==========================================
     function updateFilterButtons() {
       document.querySelectorAll('.filter-btn').forEach(btn => {
         const isActive = btn.dataset.filter === state.currentFilter;
@@ -1011,9 +1279,6 @@
       }
     });
 
-    // ==========================================
-    // 結果レポートの描画処理
-    // ==========================================
     function renderIssuesList(issues) {
       const filtered = issues.filter(i => {
         if (state.currentFilter === 'all') return true;
@@ -1083,7 +1348,6 @@
       el.resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
-    // 初期UI状態更新
     updateEditorUI();
   </script>
 </body>

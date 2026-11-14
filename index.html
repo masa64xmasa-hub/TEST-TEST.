@@ -2,11 +2,11 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <link rel="icon" type="image/png" href="favicon.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TEST-TEST. | テスト問題・解答用紙 校正チェッカー</title>
   <meta name="description" content="テストの問題用紙と解答用紙のテキストや画像を貼り付けるだけで、誤字脱字、設問番号の抜け、選択肢のずれ、配点の過不足を自動チェックする無料校正ツール「TEST-TEST.」です。" />
   <meta name="google-site-verification" content="QhLNJgeOPT-K4C-i7DbE3EmxKR7iFTtqJZnZqYCQk6s" />
+  <link rel="icon" type="image/png" href="favicon.png" />
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Tesseract.js v5 CDN (ブラウザ内日本語・英語OCR) -->
@@ -303,12 +303,11 @@
 
   <script>
     // ==========================================
-    // アプリケーション状態管理
+    // アプリケーション状態・DOM要素の参照管理
     // ==========================================
     const state = {
       questionImages: [],
       answerImages: [],
-      lastFocusedTarget: 'question',
       latestIssues: [],
       currentFilter: 'all'
     };
@@ -324,13 +323,13 @@
       previewA: document.getElementById('preview-answer'),
       dropQ: document.getElementById('dropzone-question'),
       dropA: document.getElementById('dropzone-answer'),
+      liveStats: document.getElementById('live-stats'),
       chkScore: document.getElementById('chk-total-score'),
       scoreWrapper: document.getElementById('score-input-wrapper'),
       inputScore: document.getElementById('input-target-score'),
       chkTypos: document.getElementById('chk-typos'),
       chkNumbering: document.getElementById('chk-numbering'),
       chkConsistency: document.getElementById('chk-consistency'),
-      liveStats: document.getElementById('live-stats'),
       btnCheck: document.getElementById('btn-run-check'),
       btnGenSampleImg: document.getElementById('btn-gen-sample-img'),
       btnSample: document.getElementById('btn-load-sample'),
@@ -350,21 +349,7 @@
       toast: document.getElementById('toast')
     };
 
-    // ==========================================
-    // トースト通知・エスケープ処理
-    // ==========================================
-    function showToast(msg) {
-      if (!el.toast) return;
-      el.toast.textContent = msg;
-      el.toast.classList.remove('hidden');
-      clearTimeout(window._toastTimer);
-      window._toastTimer = setTimeout(() => {
-        el.toast.classList.add('hidden');
-      }, 3500);
-    }
-
     function escapeHtml(str) {
-      if (!str) return '';
       return String(str)
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
@@ -373,32 +358,33 @@
         .replace(/'/g, '&#039;');
     }
 
+    function showToast(msg) {
+      el.toast.textContent = msg;
+      el.toast.classList.remove('hidden');
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => {
+        el.toast.classList.add('hidden');
+      }, 3200);
+    }
+
     // ==========================================
-    // 行番号同期＆リアルタイム統計カウンター
+    // 行番号同期＆統計カウンター更新処理
     // ==========================================
+    function updateLineNumbers(textarea, gutter) {
+      const lineCount = Math.max(1, textarea.value.split(/\r?\n/).length);
+      gutter.innerHTML = Array.from({ length: lineCount }, (_, i) => i + 1).join('<br>');
+    }
+
     function updateEditorUI() {
-      [
-        { textarea: el.textQ, gutter: el.linesQ },
-        { textarea: el.textA, gutter: el.linesA }
-      ].forEach(({ textarea, gutter }) => {
-        const lineCount = Math.max(1, textarea.value.split('\n').length);
-        let nums = '';
-        for (let i = 1; i <= lineCount; i++) {
-          nums += i + '\n';
-        }
-        gutter.textContent = nums.trimEnd();
-        gutter.scrollTop = textarea.scrollTop;
-      });
+      updateLineNumbers(el.textQ, el.linesQ);
+      updateLineNumbers(el.textA, el.linesA);
 
       const qChars = el.textQ.value.length;
-      const qLines = el.textQ.value ? el.textQ.value.split('\n').length : 0;
-      const qImgs = state.questionImages.length;
-
+      const qLines = el.textQ.value ? el.textQ.value.split(/\r?\n/).length : 0;
       const aChars = el.textA.value.length;
-      const aLines = el.textA.value ? el.textA.value.split('\n').length : 0;
-      const aImgs = state.answerImages.length;
+      const aLines = el.textA.value ? el.textA.value.split(/\r?\n/).length : 0;
 
-      el.liveStats.textContent = `問題用紙: ${qChars}文字 / ${qLines}行 / 画像${qImgs}枚 ｜ 解答用紙: ${aChars}文字 / ${aLines}行 / 画像${aImgs}枚`;
+      el.liveStats.textContent = `問題用紙: ${qChars}文字 / ${qLines}行 / 画像${state.questionImages.length}枚 ｜ 解答用紙: ${aChars}文字 / ${aLines}行 / 画像${state.answerImages.length}枚`;
     }
 
     el.textQ.addEventListener('input', updateEditorUI);
@@ -406,58 +392,36 @@
     el.textQ.addEventListener('scroll', () => { el.linesQ.scrollTop = el.textQ.scrollTop; });
     el.textA.addEventListener('scroll', () => { el.linesA.scrollTop = el.textA.scrollTop; });
 
-    // ==========================================
     // 合計点チェックのON/OFF切り替え
-    // ==========================================
     el.chkScore.addEventListener('change', () => {
-      const enabled = el.chkScore.checked;
-      el.inputScore.disabled = !enabled;
-      el.scoreWrapper.classList.toggle('opacity-40', !enabled);
+      el.inputScore.disabled = !el.chkScore.checked;
+      el.scoreWrapper.classList.toggle('opacity-40', !el.chkScore.checked);
     });
 
     // ==========================================
-    // 画像拡大モーダル制御
+    // 画像添付・プレビュー・拡大モーダル処理
     // ==========================================
-    function openImageModal(title, dataUrl) {
+    function openImageModal(title, src) {
       el.modalImageTitle.textContent = title;
-      el.modalImageSrc.src = dataUrl;
+      el.modalImageSrc.src = src;
       el.imageModal.classList.remove('hidden');
     }
 
-    el.btnCloseModal.addEventListener('click', () => {
-      el.imageModal.classList.add('hidden');
-    });
+    el.btnCloseModal.addEventListener('click', () => el.imageModal.classList.add('hidden'));
     el.imageModal.addEventListener('click', (e) => {
-      if (e.target === el.imageModal) {
-        el.imageModal.classList.add('hidden');
-      }
+      if (e.target === el.imageModal) el.imageModal.classList.add('hidden');
     });
 
-    // ==========================================
-    // 画像追加・プレビュー・削除処理
-    // ==========================================
     function addImages(target, files) {
       const list = target === 'question' ? state.questionImages : state.answerImages;
-      const validFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
-      if (!validFiles.length) {
-        showToast('画像ファイル（PNG, JPG, WebPなど）を選択してください');
-        return;
-      }
-
-      let loaded = 0;
-      validFiles.forEach(file => {
+      Array.from(files).forEach(file => {
+        if (!file.type.startsWith('image/')) return;
         const reader = new FileReader();
         reader.onload = (e) => {
-          list.push({
-            name: file.name || `image-${Date.now()}.png`,
-            dataUrl: e.target.result
-          });
-          loaded++;
-          if (loaded === validFiles.length) {
-            renderPreviews(target);
-            updateEditorUI();
-            showToast(`${target === 'question' ? '問題用紙' : '解答用紙'}に画像を ${validFiles.length} 枚追加しました`);
-          }
+          list.push({ name: file.name || 'pasted-image.png', dataUrl: e.target.result });
+          renderPreviews(target);
+          updateEditorUI();
+          showToast(`${target === 'question' ? '問題用紙' : '解答用紙'}に画像を追加しました`);
         };
         reader.readAsDataURL(file);
       });
@@ -466,132 +430,99 @@
     function renderPreviews(target) {
       const list = target === 'question' ? state.questionImages : state.answerImages;
       const container = target === 'question' ? el.previewQ : el.previewA;
-      const label = target === 'question' ? '問題用紙' : '解答用紙';
       container.innerHTML = '';
-
       list.forEach((img, idx) => {
         const div = document.createElement('div');
-        div.className = 'relative group w-24 h-24 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 shadow-sm cursor-pointer';
+        div.className = 'relative group w-24 h-24 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 shadow-xs cursor-pointer';
         div.innerHTML = `
-          <img src="${img.dataUrl}" alt="${escapeHtml(img.name)}" class="w-full h-full object-cover group-hover:scale-105 transition" />
-          <span class="absolute bottom-0 inset-x-0 bg-slate-900/75 text-white text-[10px] px-1.5 py-0.5 truncate">${idx + 1}枚目 (拡大)</span>
-          <button type="button" class="delete-img-btn absolute top-1 right-1 bg-rose-600 hover:bg-rose-700 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center shadow" title="削除">&times;</button>
+          <img src="${img.dataUrl}" alt="${escapeHtml(img.name)}" class="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+          <button type="button" class="absolute top-1 right-1 bg-rose-600 hover:bg-rose-700 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center shadow" title="削除">&times;</button>
         `;
-        div.addEventListener('click', (e) => {
-          if (e.target.closest('.delete-img-btn')) return;
-          openImageModal(`${label} - ${idx + 1}枚目 (${img.name})`, img.dataUrl);
-        });
-        div.querySelector('.delete-img-btn').addEventListener('click', (e) => {
+        div.querySelector('img').addEventListener('click', () => openImageModal(img.name, img.dataUrl));
+        div.querySelector('button').addEventListener('click', (e) => {
           e.stopPropagation();
           list.splice(idx, 1);
           renderPreviews(target);
           updateEditorUI();
-          showToast('画像を削除しました');
         });
         container.appendChild(div);
       });
     }
 
-    el.fileQ.addEventListener('change', (e) => {
-      if (e.target.files.length) addImages('question', e.target.files);
-      e.target.value = '';
-    });
-    el.fileA.addEventListener('change', (e) => {
-      if (e.target.files.length) addImages('answer', e.target.files);
-      e.target.value = '';
-    });
+    el.fileQ.addEventListener('change', (e) => { addImages('question', e.target.files); e.target.value = ''; });
+    el.fileA.addEventListener('change', (e) => { addImages('answer', e.target.files); e.target.value = ''; });
 
-    el.textQ.addEventListener('focus', () => { state.lastFocusedTarget = 'question'; });
-    el.textA.addEventListener('focus', () => { state.lastFocusedTarget = 'answer'; });
-
-    // ドラッグ＆ドロップ対応
     [
       { zone: el.dropQ, target: 'question' },
       { zone: el.dropA, target: 'answer' }
     ].forEach(({ zone, target }) => {
-      zone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        zone.classList.add('drag-over');
-      });
-      zone.addEventListener('dragleave', () => {
-        zone.classList.remove('drag-over');
-      });
+      zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('drag-over'); });
+      zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
       zone.addEventListener('drop', (e) => {
         e.preventDefault();
         zone.classList.remove('drag-over');
-        state.lastFocusedTarget = target;
-        if (e.dataTransfer?.files?.length) {
-          addImages(target, e.dataTransfer.files);
+        if (e.dataTransfer.files.length) addImages(target, e.dataTransfer.files);
+      });
+      zone.addEventListener('paste', (e) => {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+        const files = [];
+        for (const item of items) {
+          if (item.type.startsWith('image/')) {
+            const f = item.getAsFile();
+            if (f) files.push(f);
+          }
+        }
+        if (files.length) {
+          e.preventDefault();
+          addImages(target, files);
         }
       });
     });
 
-    // クリップボード画像貼り付け（Ctrl+V / Cmd+V）対応
-    document.addEventListener('paste', (e) => {
-      const items = e.clipboardData?.items;
-      if (!items) return;
-      const files = [];
-      for (const item of items) {
-        if (item.type.startsWith('image/')) {
-          const f = item.getAsFile();
-          if (f) files.push(f);
-        }
-      }
-      if (files.length > 0) {
-        e.preventDefault();
-        const active = document.activeElement;
-        let target = state.lastFocusedTarget;
-        if (el.dropA.contains(active)) target = 'answer';
-        else if (el.dropQ.contains(active)) target = 'question';
-        addImages(target, files);
-      }
-    });
-
     // ==========================================
-    // Canvas APIによるテストサンプル画像（ミスあり）自動生成
+    // サンプル画像（Canvas生成）＆サンプルテキスト読込
     // ==========================================
-    function renderSheetCanvas(title, lines) {
+    function createSheetCanvasImage(title, lines) {
       const canvas = document.createElement('canvas');
-      canvas.width = 900;
-      canvas.height = 560;
+      canvas.width = 920;
+      canvas.height = 540;
       const ctx = canvas.getContext('2d');
 
-      // 背景と外枠
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
+
       ctx.strokeStyle = '#334155';
       ctx.lineWidth = 3;
-      ctx.strokeRect(24, 24, canvas.width - 48, canvas.height - 48);
+      ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40);
 
-      // タイトルヘッダー
       ctx.fillStyle = '#0f172a';
       ctx.font = 'bold 28px "Noto Sans JP", sans-serif';
-      ctx.fillText(title, 50, 75);
+      ctx.fillText(title, 48, 72);
 
-      ctx.beginPath();
-      ctx.moveTo(45, 95);
-      ctx.lineTo(canvas.width - 45, 95);
       ctx.strokeStyle = '#94a3b8';
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(48, 92);
+      ctx.lineTo(canvas.width - 48, 92);
       ctx.stroke();
 
-      // 本文描画
       ctx.font = '22px "Noto Sans JP", sans-serif';
-      ctx.fillStyle = '#1e293b';
-      let y = 140;
-      lines.forEach(line => {
-        ctx.fillText(line, 52, y);
-        y += 42;
+      lines.forEach((line, i) => {
+        ctx.fillText(line, 52, 138 + i * 42);
       });
 
       return canvas.toDataURL('image/png');
     }
 
     el.btnGenSampleImg.addEventListener('click', () => {
-      const qDataUrl = renderSheetCanvas('【問題用紙】 理科・社会 確認テスト（100点満点）', [
+      el.textQ.value = '';
+      el.textA.value = '';
+
+      const qImgUrl = createSheetCanvasImage('【問題用紙】 理科・社会 確認テスト （100点満点）', [
         '【大問1】 次の問いに答えなさい。（各10点）',
         '問1 地球の自転によって起こる現象を次ぎから1つ選らびなさい。',
-        '    ア 季節の変化   イ 昼夜の交代   ウ 星座の年周運動   エ 満ち欠け',
+        '   ア 季節の変化   イ 昼夜の交代   ウ 星座の年周運動   エ 満ち欠け',
         '問2 光合成が行われる細胞内のつくりを答えなさい。',
         '問4 酸性の水溶液にBTB溶液を加えたときの色を答えなさい。（10点）',
         '',
@@ -600,60 +531,59 @@
         '問2 政令指定都市でないものを1つ選びなさい。（20点）'
       ]);
 
-      const aDataUrl = renderSheetCanvas('【回答用紙】 理科・社会 確認テスト', [
+      const aImgUrl = createSheetCanvasImage('【回答用紙】 理科・社会 確認テスト', [
         '【大問1】',
-        '問1  [ ア ・ イ ・ ウ ・ エ ・ オ ] （10点）',
-        '問2  [                    ] （10点）',
-        '問3  [                    ] （10点）',
+        '問1 [ ア ・ イ ・ ウ ・ エ ・ オ ] （10点）',
+        '問2 [ 　　　　 ] （10点）',
+        '問3 [ 　　　　 ] （10点）',
         '',
         '【大問2】',
-        '問1  [                    ] （20点）',
-        '問2  [ ア ・ イ ・ ウ ・ エ ] （25点）'
+        '問1 [ 　　　　 ] （20点）',
+        '問2 [ ア ・ イ ・ ウ ・ エ ] （25点）'
       ]);
 
-      state.questionImages = [{ name: 'sample-question.png', dataUrl: qDataUrl }];
-      state.answerImages = [{ name: 'sample-answer.png', dataUrl: aDataUrl }];
-      el.textQ.value = '';
-      el.textA.value = '';
+      state.questionImages = [{ name: 'sample-question.png', dataUrl: qImgUrl }];
+      state.answerImages = [{ name: 'sample-answer.png', dataUrl: aImgUrl }];
       renderPreviews('question');
       renderPreviews('answer');
       updateEditorUI();
-      showToast('ミス入りのテスト画像（問題・解答用紙）を生成してセットしました！');
+      showToast('ミス入りの問題用紙・解答用紙サンプル画像を生成しました！');
     });
 
-    // ==========================================
-    // サンプルテキスト読み込み＆クリア機能
-    // ==========================================
     el.btnSample.addEventListener('click', () => {
-      el.textQ.value = `【大問1】次の問いに答えなさい。（各5点）
+      state.questionImages = [];
+      state.answerImages = [];
+      renderPreviews('question');
+      renderPreviews('answer');
+
+      el.textQ.value = `【大問1】次の問いに答えなさい。（各10点）
 問1 地球の自転によって起こる現象を次ぎから1つ選らびなさい。
 ア 季節の変化　イ 昼夜の交代　ウ 星座の年周運動　エ 満ち欠け
 
-問2 光合成が行われる細胞内のつくりを図1を参考に答えなさい。（5点
+問2 光合成が行われる細胞内のつくりを答えなさい。
 
-問4 酸性の水溶液にBTB溶液を加えたときの色を答えなさい。（5点）
+問4 酸性の水溶液にBTB溶液を加えたときの色を答えなさい。（10点）
 
 【大問2】日本の地理について答えなさい。
-問1 日本で最も面積が大きい都道府県を答えななさい。（10点）
-問2 次のうち、政令指定都市でないものを1つ選びなさい。（10点）
+問1 日本で最も面積が大きい都道府県を答えななさい。（20点）
+問2 図1を見て、政令指定都市でないものを1つ選びなさい。（20点）
 ア 札幌市　イ 仙台市　ウ 熊本市　エ 盛岡市　オ 福岡市`;
 
-      el.textA.value = `【回答用紙】
-【大問1】
-問1 [ ア ・ イ ・ ウ ・ エ ・ オ ] （5点）
-問2 [ 　　　　　　　 ] （5点）
-問3 [ 　　　　　　　 ] （5点）
+      el.textA.value = `【大問1】
+問1 [ ア ・ イ ・ ウ ・ エ ・ オ ] （10点）
+問2 [ 　　　　　　　 ] （10点）
+問3 [ 　　　　　　　 ] （10点）
 
 【大問2】
-問1 [ 　　　　　　　 ] （10点）
-問2 [ ア ・ イ ・ ウ ・ エ ] （15点）`;
+問1 [ 　　　　　　　 ] （20点）
+問2 [ ア ・ イ ・ ウ ・ エ ] （25点）`;
 
       el.chkScore.checked = true;
       el.inputScore.disabled = false;
       el.scoreWrapper.classList.remove('opacity-40');
       el.inputScore.value = 100;
       updateEditorUI();
-      showToast('ミス・不整合入りのサンプルテキストを読み込みました');
+      showToast('ミス入りのサンプルテキストを読み込みました');
     });
 
     el.btnClear.addEventListener('click', () => {
@@ -663,16 +593,16 @@
       state.answerImages = [];
       renderPreviews('question');
       renderPreviews('answer');
-      updateEditorUI();
       el.resultSection.classList.add('hidden');
+      updateEditorUI();
       showToast('入力内容をすべてクリアしました');
     });
 
     // ==========================================
-    // Tesseract.js による画像内OCR処理
+    // Tesseract.js による画像文字認識（OCR）
     // ==========================================
     async function extractTextFromImages(images, label) {
-      if (!images || !images.length) return '';
+      if (!images.length) return '';
       let combined = '';
       for (let i = 0; i < images.length; i++) {
         el.progressText.textContent = `${label}の画像（${i + 1}/${images.length}枚目）から文字を読み取り中...`;
@@ -683,45 +613,108 @@
     }
 
     // ==========================================
-    // テキストからの設問・選択肢・配点パース処理
+    // テキスト正規化・設問・選択肢・配点スマートパース処理
     // ==========================================
     function toHalfWidthNum(str) {
       return str.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
     }
 
-    function parseQuestionsFromText(text) {
-      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    function kanjiToNum(str) {
+      const map = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '十': 10 };
+      if (map[str]) return map[str];
+      const parsed = parseInt(toHalfWidthNum(str), 10);
+      return isNaN(parsed) ? null : parsed;
+    }
+
+    // OCR特有の不要なスペースや記号ブレを賢く正規化する
+    function normalizeOcrText(text) {
+      return text
+        .replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0))
+        .replace(/（/g, '(')
+        .replace(/）/g, ')')
+        .replace(/［/g, '[')
+        .replace(/］/g, ']')
+        .replace(/【\s*/g, '【')
+        .replace(/\s*】/g, '】')
+        .replace(/大\s*問\s*([0-9一二三四五六七八九十]+)/g, '大問$1')
+        .replace(/第\s*([0-9一二三四五六七八九十]+)\s*問/g, '第$1問')
+        .replace(/問\s+([0-9]+)/g, '問$1')
+        .replace(/各\s*([0-9]+)\s*点/g, '各$1点');
+    }
+
+    function parseQuestionsFromText(rawText) {
+      const normalized = normalizeOcrText(rawText);
+      const lines = normalized.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
       const items = [];
+      let currentSectionNum = 1;
       let currentSection = '大問1';
       let defaultSectionPoints = null;
+      let lastQuestionNumInSection = 0;
 
       lines.forEach((line, idx) => {
-        // 大問の見出し検出
-        const secMatch = line.match(/(?:【|\[)?\s*(?:大問|第)\s*([0-9０-９一二三四五六七八九十]+)\s*(?:問|】|\])?/);
-        if (secMatch && (line.includes('大問') || /^【.*】/.test(line) || /^第[0-9０-９一二三四五]+問/.test(line))) {
-          currentSection = `大問${toHalfWidthNum(secMatch[1])}`;
-          const eachPt = line.match(/各\s*([0-9０-９]+)\s*点/);
-          defaultSectionPoints = eachPt ? parseInt(toHalfWidthNum(eachPt[1]), 10) : null;
+        // 大問の見出し検出（【大問1】、大問2、第2問、2. など）
+        const secMatch = line.match(/(?:【|\[)?\s*(?:大問|第)\s*([0-9一二三四五六七八九十]+)\s*(?:問|】|\])?/);
+        const topNumSecMatch = line.match(/^([0-9]+)\s*[\.．]\s*(?:次の|日本|以下|計算|英語|理科|社会|国語|数学)/);
+
+        if (secMatch && (line.includes('大問') || /^【.*】/.test(line) || /^第[0-9一二三四五]+問/.test(line))) {
+          const parsedSec = kanjiToNum(secMatch[1]);
+          if (parsedSec !== null) {
+            currentSectionNum = parsedSec;
+            currentSection = `大問${currentSectionNum}`;
+            lastQuestionNumInSection = 0;
+          }
+          // 見出し行にある「(各10点)」を取得
+          const eachPt = line.match(/各([0-9]+)点/);
+          defaultSectionPoints = eachPt ? parseInt(eachPt[1], 10) : null;
+        } else if (topNumSecMatch) {
+          currentSectionNum = parseInt(topNumSecMatch[1], 10);
+          currentSection = `大問${currentSectionNum}`;
+          lastQuestionNumInSection = 0;
+          const eachPt = line.match(/各([0-9]+)点/);
+          defaultSectionPoints = eachPt ? parseInt(eachPt[1], 10) : null;
+        } else {
+          // 大問見出しの直後の行に「(各10点)」が書かれている場合も拾う
+          const eachPtLine = line.match(/^\(?各([0-9]+)点\)?$/);
+          if (eachPtLine) {
+            defaultSectionPoints = parseInt(eachPtLine[1], 10);
+          }
         }
 
-        // 小問番号の検出（問1、(1)、1. など）
-        const qMatch = line.match(/^(?:問|設問|\(|（)\s*([0-9０-９]+)\s*(?:\)|）|\.|．|\s|\[|【)/);
+        // 小問番号の検出（問1、(1)、設問1 など）
+        const qMatch = line.match(/^(?:問|設問|\()\s*([0-9]+)\s*(?:\)|\.|．|\s|\[|【|$)/);
         if (qMatch) {
-          const num = parseInt(toHalfWidthNum(qMatch[1]), 10);
+          const num = parseInt(qMatch[1], 10);
+
+          // OCRで大問見出しが読み飛ばされた場合の自動推測：
+          // すでに問2以上が出ていたのに急に「問1」が再登場したら次の大問へ自動遷移
+          if (num === 1 && lastQuestionNumInSection >= 2) {
+            currentSectionNum++;
+            currentSection = `大問${currentSectionNum}`;
+            defaultSectionPoints = null;
+          }
+          lastQuestionNumInSection = num;
+
           const key = `${currentSection}-問${num}`;
 
-          // 配点の抽出
+          // 配点の抽出（個別配点があれば優先、なければ大問の「各X点」を適用）
           let points = defaultSectionPoints;
-          const ptMatch = line.match(/(?:配点)?\s*([0-9０-９]+)\s*点/);
+          const ptMatch = line.match(/(?:配点)?\s*([0-9]+)\s*点/);
           if (ptMatch && !line.includes('各')) {
-            points = parseInt(toHalfWidthNum(ptMatch[1]), 10);
+            points = parseInt(ptMatch[1], 10);
           }
 
-          // 選択肢の抽出（該当行および次の行まで確認）
-          const lookahead = line + ' ' + (lines[idx + 1] || '');
+          // 選択肢の抽出（次の設問や大問が始まる手前までの複数行をスキャン）
+          let lookahead = line;
+          for (let j = idx + 1; j < Math.min(idx + 5, lines.length); j++) {
+            const nextL = lines[j];
+            if (/^(?:【|\[)?\s*(?:大問|第)\s*[0-9一二三四五六七八九十]+/.test(nextL)) break;
+            if (/^(?:問|設問|\()\s*[0-9]+\s*(?:\)|\.|．|\s|\[|【|$)/.test(nextL)) break;
+            lookahead += ' ' + nextL;
+          }
+
           const choices = [];
           ['ア', 'イ', 'ウ', 'エ', 'オ', 'カ', 'キ', 'A', 'B', 'C', 'D', 'E'].forEach(ch => {
-            const re = new RegExp(`(?:^|[\\s\\[［・(（])${ch}(?:[\\s\\]］・)）]|$)`);
+            const re = new RegExp(`(?:^|[\\s\\[・(])${ch}(?:[\\s\\]・)]|$)`);
             if (re.test(lookahead)) {
               choices.push(ch);
             }
@@ -766,7 +759,7 @@
         const fullQ = (rawQ + '\n' + ocrQ).trim();
         const fullA = (rawA + '\n' + ocrA).trim();
 
-        el.progressText.textContent = '誤字脱字・設問番号・配点・整合性を検証中...';
+        el.progressText.textContent = '誤字脱字・設問番号・配点・整合性をスマート解析中...';
 
         const issues = [];
 
@@ -809,7 +802,7 @@
           });
         }
 
-        // 2. 設問パースと大問ごとの連番・重複・図表参照チェック
+        // 2. 設問パースと大問ごとのスマート連番・重複・図表参照チェック
         const qItems = parseQuestionsFromText(fullQ);
         const aItems = parseQuestionsFromText(fullA);
 
@@ -818,7 +811,7 @@
           sections.forEach(sec => {
             const secQs = qItems.filter(i => i.section === sec);
             const seen = new Set();
-            let expected = 1;
+            let prevNum = 0;
             secQs.forEach(item => {
               if (seen.has(item.num)) {
                 issues.push({
@@ -826,26 +819,27 @@
                   category: '設問番号の重複',
                   detail: `問題用紙の「${sec} 問${item.num}」が重複しています。`
                 });
-              }
-              seen.add(item.num);
-              if (item.num !== expected) {
+              } else if (item.num > prevNum + 1) {
+                const missing = [];
+                for (let m = prevNum + 1; m < item.num; m++) {
+                  missing.push(`問${m}`);
+                }
                 issues.push({
                   level: 'error',
                   category: '設問番号の抜け・飛び',
-                  detail: `問題用紙の「${sec}」で設問番号が飛んでいます（問${expected}の代わりに問${item.num}が出現）。`
+                  detail: `問題用紙の「${sec}」で ${missing.join('・')} が抜けています（${prevNum === 0 ? '先頭' : '問' + prevNum}の次に問${item.num}が出現）。`
                 });
-                expected = item.num + 1;
-              } else {
-                expected++;
               }
+              seen.add(item.num);
+              prevNum = Math.max(prevNum, item.num);
             });
           });
 
-          // 図・表の参照整合性チェック（「図1」「表1」などが1回しか出現しない＝見出しや図本体がない可能性）
-          const figMatches = fullQ.match(/(?:図|表)\s*[0-9０-９]+/g) || [];
+          // 図・表の参照整合性チェック
+          const figMatches = normalizeOcrText(fullQ).match(/(?:図|表)\s*[0-9]+/g) || [];
           const figCounts = {};
           figMatches.forEach(m => {
-            const norm = toHalfWidthNum(m.replace(/\s+/g, ''));
+            const norm = m.replace(/\s+/g, '');
             figCounts[norm] = (figCounts[norm] || 0) + 1;
           });
           Object.entries(figCounts).forEach(([figName, count]) => {

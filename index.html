@@ -62,9 +62,19 @@
     .hl-warn { background: rgba(245, 158, 11, .34); }
     .hl-whole.hl-error { background: rgba(244, 63, 94, .14); }
     .hl-whole.hl-warn { background: rgba(245, 158, 11, .18); }
+    .print-only { display: none; }
     @media print {
+      @page { size: A4; margin: 12mm; }
       .no-print { display: none !important; }
-      body { background: #fff; }
+      .print-only { display: block !important; }
+      body { background: #fff; font-size: 11px; }
+      main { padding: 0 !important; max-width: none !important; }
+      #result-section > div { box-shadow: none !important; border: 1px solid #cbd5e1 !important; padding: 10px !important; break-inside: auto; }
+      #issues-list > * { break-inside: avoid; }
+      #comparison-tbody tr, #section-totals-tbody tr { break-inside: avoid; }
+      #result-section .overflow-x-auto { overflow: visible !important; }
+      table { font-size: 10px; }
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     }
   </style>
 </head>
@@ -220,11 +230,14 @@
               <button id="btn-ocr-question" type="button" class="text-xs bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 font-medium px-3 py-1.5 rounded-lg transition">画像を読み取る（やり直す）</button>
               <span class="text-[11px] text-slate-500">読み取りの誤りはここで直してください。チェックはこの内容で行われます。</span>
             </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              <div id="ocr-imgs-question" class="max-h-[26rem] overflow-auto space-y-2 bg-slate-100 rounded-xl p-2 text-xs text-slate-400"></div>
             <div class="flex rounded-xl border border-slate-300 overflow-hidden bg-white">
               <div class="hl-wrap">
                 <div id="hl-ocr-question" aria-hidden="true" class="hl-backdrop py-3 px-3 text-xs leading-relaxed font-mono-editor"></div>
-                <textarea id="ocr-question" rows="7" placeholder="画像を追加して「校正・整合性チェック」を実行すると、読み取った文字がここに表示されます。" class="hl-textarea w-full py-3 px-3 text-xs leading-relaxed font-mono-editor focus:outline-none resize-y border-0"></textarea>
+                <textarea id="ocr-question" rows="14" placeholder="画像を追加して「校正・整合性チェック」を実行すると、読み取った文字がここに表示されます。" class="hl-textarea w-full py-3 px-3 text-xs leading-relaxed font-mono-editor focus:outline-none resize-y border-0"></textarea>
               </div>
+            </div>
             </div>
           </div>
         </details>
@@ -266,11 +279,14 @@
               <button id="btn-ocr-answer" type="button" class="text-xs bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium px-3 py-1.5 rounded-lg transition">画像を読み取る（やり直す）</button>
               <span class="text-[11px] text-slate-500">読み取りの誤りはここで直してください。チェックはこの内容で行われます。</span>
             </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              <div id="ocr-imgs-answer" class="max-h-[26rem] overflow-auto space-y-2 bg-slate-100 rounded-xl p-2 text-xs text-slate-400"></div>
             <div class="flex rounded-xl border border-slate-300 overflow-hidden bg-white">
               <div class="hl-wrap">
                 <div id="hl-ocr-answer" aria-hidden="true" class="hl-backdrop py-3 px-3 text-xs leading-relaxed font-mono-editor"></div>
-                <textarea id="ocr-answer" rows="7" placeholder="画像を追加して「校正・整合性チェック」を実行すると、読み取った文字がここに表示されます。" class="hl-textarea w-full py-3 px-3 text-xs leading-relaxed font-mono-editor focus:outline-none resize-y border-0"></textarea>
+                <textarea id="ocr-answer" rows="14" placeholder="画像を追加して「校正・整合性チェック」を実行すると、読み取った文字がここに表示されます。" class="hl-textarea w-full py-3 px-3 text-xs leading-relaxed font-mono-editor focus:outline-none resize-y border-0"></textarea>
               </div>
+            </div>
             </div>
           </div>
         </details>
@@ -283,7 +299,8 @@
       <summary class="text-sm font-bold text-slate-800 cursor-pointer select-none">正答・模範解答を入力して照合する（任意）</summary>
       <div class="mt-3 space-y-2">
         <div class="flex flex-wrap items-center justify-between gap-2">
-          <p class="text-xs text-slate-500">1行に1問、「問1 イ」の形式で入力します。大問ごとに「【大問1】」の行を入れてください。画像・PDFを追加すると文字を読み取って照合に使います（この枠にドラッグ＆ドロップも可）。</p>
+          <p class="text-xs text-slate-500">「問1 イ」の形式が基本ですが、「1 (1) ア (2) イ」のような書き方や、1行に複数の答え、表（タブ・「|」区切り）からの貼り付けも自動で整形します。大問ごとに「【大問1】」の行を入れると確実です。画像・PDFを追加すると文字を読み取って照合に使います（この枠にドラッグ＆ドロップも可）。</p>
+          <button id="btn-key-sample" type="button" class="text-xs bg-amber-50 hover:bg-amber-100 text-amber-800 font-medium px-3 py-2 rounded-xl border border-amber-200 transition">サンプル模範解答を入力</button>
           <label class="cursor-pointer text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-medium px-3 py-2 rounded-xl border border-indigo-200 transition">
             <span>画像・PDFを追加</span>
             <input id="file-key" type="file" accept="image/*,application/pdf,.pdf" multiple class="hidden" />
@@ -295,7 +312,10 @@
           <summary class="text-xs font-medium text-indigo-800 cursor-pointer select-none">画像・PDFから読み取った模範解答（確認・修正できます）</summary>
           <div class="mt-2 space-y-2">
             <button id="btn-ocr-key" type="button" class="text-xs bg-white hover:bg-indigo-50 text-indigo-700 border border-indigo-200 font-medium px-3 py-1.5 rounded-lg transition">読み取る（やり直す）</button>
-            <textarea id="ocr-key" rows="6" placeholder="画像・PDFを追加して「校正・整合性チェック」を実行すると、読み取った文字がここに表示されます。" class="w-full px-3 py-2 text-xs leading-relaxed font-mono-editor border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"></textarea>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            <div id="ocr-imgs-key" class="max-h-[22rem] overflow-auto space-y-2 bg-slate-100 rounded-xl p-2 text-xs text-slate-400"></div>
+            <textarea id="ocr-key" rows="12" placeholder="画像・PDFを追加して「校正・整合性チェック」を実行すると、読み取った文字がここに表示されます。" class="w-full px-3 py-2 text-xs leading-relaxed font-mono-editor border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"></textarea>
+            </div>
           </div>
         </details>
       </div>
@@ -312,7 +332,7 @@
     </div>
 
     <!-- 進捗表示 -->
-    <div id="progress-box" class="hidden bg-indigo-50 border border-indigo-200 rounded-xl p-5 text-center space-y-2.5">
+    <div id="progress-box" class="no-print hidden bg-indigo-50 border border-indigo-200 rounded-xl p-5 text-center space-y-2.5">
       <p id="progress-text" class="text-sm font-bold text-indigo-800">解析を実行中です...</p>
       <p class="text-xs text-indigo-600">画像を読み取る場合、初回は日本語OCRデータの読み込みに数十秒かかることがあります。</p>
       <div class="w-full max-w-md mx-auto bg-indigo-200 rounded-full h-2.5 overflow-hidden">
@@ -322,6 +342,10 @@
 
     <!-- 結果表示エリア -->
     <section id="result-section" class="hidden space-y-6">
+      <div class="print-only border-b-2 border-slate-800 pb-2">
+        <p class="text-lg font-bold">TEST-TEST. 校正・整合性チェック結果レポート</p>
+        <p id="print-meta" class="text-xs text-slate-600"></p>
+      </div>
       <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4">
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
           <div class="flex flex-wrap items-center gap-3">
@@ -512,6 +536,45 @@
       const f = document.getElementById('link-feedback');
       f.href = SITE_CONFIG.feedbackUrl;
       f.classList.remove('hidden');
+    }
+
+    const SAMPLE_KEY = `【大問1】
+問1 イ
+問2 葉緑体
+問3 黄色
+問4 黄色
+
+【大問2】
+問1 北海道
+問2 カ`;
+
+    // 模範解答の書き方の違いを「問n 答え」形式にそろえる
+    function normalizeKeyText(text) {
+      const out = [];
+      const src = text
+        .replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+        .replace(/（/g, '(').replace(/）/g, ')')
+        .split(/\r?\n/);
+      src.forEach(raw => {
+        let line = raw.replace(/\t+/g, ' ').replace(/^\s*\|/, '').replace(/\|\s*$/, '').replace(/\|/g, ' ').trim();
+        if (!line) { out.push(''); return; }
+        const sec = line.match(/^(?:大問\s*)?(\d+)\s*[\s.．:：]\s*(\(\s*\d+\s*\)[\s\S]*)$/);
+        if (sec) { out.push(`【大問${sec[1]}】`); line = sec[2]; }
+        if (/^\(\s*\d+\s*\)/.test(line)) {
+          const re = /\(\s*(\d+)\s*\)\s*([^()]*?)(?=\(\s*\d+\s*\)|$)/g;
+          let m;
+          while ((m = re.exec(line))) if (m[2].trim()) out.push(`問${m[1]} ${m[2].trim()}`);
+          return;
+        }
+        if (/^問\s*\d+/.test(line) && (line.match(/問\s*\d+/g) || []).length > 1) {
+          line.split(/(?=問\s*\d+)/).forEach(x => { if (x.trim()) out.push(x.trim()); });
+          return;
+        }
+        const bare = line.match(/^(\d+)\s+(\S.*)$/);
+        if (bare && !/^(?:大問|【|第)/.test(line)) { out.push(`問${bare[1]} ${bare[2]}`); return; }
+        out.push(line);
+      });
+      return out.join('\n');
     }
 
     function escapeHtml(str) {
@@ -717,6 +780,12 @@
       const list = TGT[target].list();
       const container = TGT[target].prev();
       container.innerHTML = '';
+      const side = document.getElementById('ocr-imgs-' + target);
+      if (side) {
+        side.innerHTML = list.length
+          ? list.map(img => `<figure class="bg-white rounded-lg p-1.5 shadow-xs"><figcaption class="text-[11px] text-slate-500 mb-1 truncate">${escapeHtml(img.name)}</figcaption><img src="${img.dataUrl}" alt="${escapeHtml(img.name)}" class="w-full h-auto rounded" /></figure>`).join('')
+          : '画像・PDFを追加すると、ここに原本が表示され、右の読み取り結果と見比べながら直せます。';
+      }
       list.forEach((img, idx) => {
         const div = document.createElement('div');
         div.className = 'relative group w-24 h-24 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 shadow-xs cursor-pointer';
@@ -736,8 +805,14 @@
       });
     }
 
+    ['question', 'answer', 'key'].forEach(renderPreviews);
     el.fileQ.addEventListener('change', (e) => { addImages('question', e.target.files); e.target.value = ''; });
     el.fileA.addEventListener('change', (e) => { addImages('answer', e.target.files); e.target.value = ''; });
+    document.getElementById('btn-key-sample').addEventListener('click', () => {
+      el.textKey.value = SAMPLE_KEY;
+      saveStateDebounced();
+      showToast('サンプル模範解答を入力しました（付属のサンプル問題と一緒に試せます）');
+    });
     el.fileK.addEventListener('change', (e) => { addImages('key', e.target.files); e.target.value = ''; });
 
     [
@@ -869,6 +944,8 @@
 問1 [ 　　　　　　　 ] （20点）
 問2 [ ア ・ イ ・ ウ ・ エ ] （25点）`;
 
+      el.textKey.value = SAMPLE_KEY;
+      el.ocrK.value = '';
       el.chkScore.checked = true;
       el.inputScore.disabled = false;
       el.scoreWrapper.classList.remove('opacity-40');
@@ -1175,7 +1252,13 @@
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     });
 
-    el.btnPrint.addEventListener('click', () => window.print());
+    el.btnPrint.addEventListener('click', () => {
+      const err = state.latestIssues.filter(i => i.level === 'error').length;
+      const warn = state.latestIssues.length - err;
+      document.getElementById('print-meta').textContent =
+        `実施日: ${new Date().toLocaleDateString('ja-JP')} ／ 要修正 ${err}件・確認推奨 ${warn}件 ／ 本レポートは自動チェックの結果であり、最終確認は人の目で行ってください`;
+      window.print();
+    });
 
     function toHalfWidthNum(str) {
       return str.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
@@ -1892,7 +1975,7 @@
         // 3.5 正答・解答例との照合（入力がある場合のみ）
         const keyText = [el.textKey.value, ...parseOcrBlocks(el.ocrK.value).map(b => b.lines.join('\n'))].join('\n');
         if (el.chkConsistency.checked && keyText.trim()) {
-          const keyNorm = keyText.replace(/(問\s*[0-9０-９]+)\s*[:：=＝]\s*/g, '$1 ');
+          const keyNorm = normalizeKeyText(keyText).replace(/(問\s*[0-9０-９]+)\s*[:：=＝]\s*/g, '$1 ');
           const keyItems = parseQuestionsFromText(keyNorm);
           const noKey = qItems.filter(q => !keyItems.some(k => k.key === q.key));
           if (noKey.length) {

@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TEST-TEST. | テスト問題・解答用紙 校正チェッカー</title>
+  <title>TEST-TEST. | テスト問題の校正・解答用紙の整合性チェック（無料）</title>
   <meta name="description" content="テストの問題用紙と解答用紙のテキスト・画像・PDFを読み込むだけで、誤字脱字、設問番号の抜け、選択肢のずれ、配点の過不足を自動チェックする無料校正ツール「TEST-TEST.」です。" />
   <meta name="google-site-verification" content="QhLNJgeOPT-K4C-i7DbE3EmxKR7iFTtqJZnZqYCQk6s" />
+  <script type="application/ld+json">[{"@context": "https://schema.org", "@type": "WebApplication", "name": "TEST-TEST.", "url": "https://masa64xmasa-hub.github.io/TEST-TEST./", "applicationCategory": "EducationalApplication", "operatingSystem": "Web", "inLanguage": "ja", "description": "テストの問題用紙・解答用紙・模範解答の誤字脱字、設問番号の抜け、選択肢のずれ、配点の食い違いを自動チェックする無料の校正ツール。", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "JPY"}}, {"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "定期考査や小テストの問題を無料でチェックできますか？", "acceptedAnswer": {"@type": "Answer", "text": "はい、無料です。問題用紙・解答用紙・模範解答のテキストや画像、PDFを読み込むだけで、誤字脱字、送り仮名の誤り、設問番号の抜け、選択肢のずれ、配点の合計の食い違いを自動でチェックします。"}}, {"@type": "Question", "name": "作成中の未公開のテスト問題を入力しても大丈夫ですか？", "acceptedAnswer": {"@type": "Answer", "text": "入力した文章・画像・PDFは、お使いのブラウザ内だけで処理され、外部サーバーには送信・保存されません。ただし、画面の読み込み時に文字認識などの部品をインターネットから取得します。"}}, {"@type": "Question", "name": "解答用紙と問題用紙の整合性は何を確認しますか？", "acceptedAnswer": {"@type": "Answer", "text": "設問番号の過不足、選択肢の記号の数、配点の食い違い、大問ごとの合計点を比べます。模範解答を入力すると、問題にない設問や、選択肢にない正答も見つけます。"}}, {"@type": "Question", "name": "PDFは何ページまで読み込めますか？", "acceptedAnswer": {"@type": "Answer", "text": "1回の取り込みで最大40ページです。文字が埋め込まれたPDFは文字をそのまま使い、スキャンしたPDFは画像として文字を読み取ります。パスワード付きのPDFは読み込めません。"}}, {"@type": "Question", "name": "チェック結果は100%正確ですか？", "acceptedAnswer": {"@type": "Answer", "text": "いいえ。自動チェックは見落としや誤検出が起こりえます。縦書きや数式、手書きの読み取りは特に不得意です。最終確認は必ず人の目で行ってください。"}}]}]</script>
   <link rel="icon" type="image/png" href="favicon.png" />
   <link rel="canonical" href="https://masa64xmasa-hub.github.io/TEST-TEST./" />
   <!-- OGP（SNSで共有されたときの表示） -->
@@ -412,6 +413,47 @@
             </thead>
             <tbody id="section-totals-tbody" class="divide-y divide-slate-100"></tbody>
           </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 使い方・FAQ（検索で見つけてもらうための解説） -->
+    <section class="no-print space-y-6 pt-4 border-t border-slate-200">
+      <div class="space-y-2">
+        <h2 class="text-lg font-bold text-slate-900">定期考査・小テストの校正と、解答用紙の整合性チェックを無料で</h2>
+        <p class="text-sm text-slate-600 leading-relaxed">TEST-TEST. は、先生や塾講師がテスト問題を印刷する前に行う「テスト問題の校正」と「問題用紙・解答用紙・模範解答のつき合わせ」を手伝う無料ツールです。誤字脱字や送り仮名の誤り、設問番号の抜け、選択肢のずれ、配点の合計の食い違いといった、見落としやすいミスを自動で洗い出します。</p>
+      </div>
+      <div class="space-y-2">
+        <h3 class="font-bold text-slate-800">使い方（3ステップ）</h3>
+        <ol class="list-decimal list-inside text-sm text-slate-600 space-y-1 leading-relaxed">
+          <li>問題用紙・解答用紙のテキストを貼り付けるか、画像・PDFをドラッグ＆ドロップします（模範解答は任意）。</li>
+          <li>「校正・整合性チェックを実行する」を押します。</li>
+          <li>指摘された箇所を確認し、修正案はボタンでそのまま適用できます。結果は印刷・PDF保存やCSVで残せます。</li>
+        </ol>
+      </div>
+      <div class="space-y-2">
+        <h3 class="font-bold text-slate-800">よくある質問</h3>
+        <div class="space-y-2">
+        <details class="bg-white rounded-xl border border-slate-200 px-4 py-3">
+          <summary class="font-bold text-sm text-slate-800 cursor-pointer select-none">定期考査や小テストの問題を無料でチェックできますか？</summary>
+          <p class="mt-2 text-sm text-slate-600 leading-relaxed">はい、無料です。問題用紙・解答用紙・模範解答のテキストや画像、PDFを読み込むだけで、誤字脱字、送り仮名の誤り、設問番号の抜け、選択肢のずれ、配点の合計の食い違いを自動でチェックします。</p>
+        </details>
+        <details class="bg-white rounded-xl border border-slate-200 px-4 py-3">
+          <summary class="font-bold text-sm text-slate-800 cursor-pointer select-none">作成中の未公開のテスト問題を入力しても大丈夫ですか？</summary>
+          <p class="mt-2 text-sm text-slate-600 leading-relaxed">入力した文章・画像・PDFは、お使いのブラウザ内だけで処理され、外部サーバーには送信・保存されません。ただし、画面の読み込み時に文字認識などの部品をインターネットから取得します。</p>
+        </details>
+        <details class="bg-white rounded-xl border border-slate-200 px-4 py-3">
+          <summary class="font-bold text-sm text-slate-800 cursor-pointer select-none">解答用紙と問題用紙の整合性は何を確認しますか？</summary>
+          <p class="mt-2 text-sm text-slate-600 leading-relaxed">設問番号の過不足、選択肢の記号の数、配点の食い違い、大問ごとの合計点を比べます。模範解答を入力すると、問題にない設問や、選択肢にない正答も見つけます。</p>
+        </details>
+        <details class="bg-white rounded-xl border border-slate-200 px-4 py-3">
+          <summary class="font-bold text-sm text-slate-800 cursor-pointer select-none">PDFは何ページまで読み込めますか？</summary>
+          <p class="mt-2 text-sm text-slate-600 leading-relaxed">1回の取り込みで最大40ページです。文字が埋め込まれたPDFは文字をそのまま使い、スキャンしたPDFは画像として文字を読み取ります。パスワード付きのPDFは読み込めません。</p>
+        </details>
+        <details class="bg-white rounded-xl border border-slate-200 px-4 py-3">
+          <summary class="font-bold text-sm text-slate-800 cursor-pointer select-none">チェック結果は100%正確ですか？</summary>
+          <p class="mt-2 text-sm text-slate-600 leading-relaxed">いいえ。自動チェックは見落としや誤検出が起こりえます。縦書きや数式、手書きの読み取りは特に不得意です。最終確認は必ず人の目で行ってください。</p>
+        </details>
         </div>
       </div>
     </section>

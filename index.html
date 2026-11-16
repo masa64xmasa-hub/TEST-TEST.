@@ -1907,7 +1907,10 @@
       const flush = (opts, startLine) => {
         const seen = new Map();
         opts.forEach(o => {
-          const key = o.text.replace(/[\s　]+/g, '');
+          // 区切り記号・括弧・配点を除いた中身で比べる（解答欄の「[ ア ・ イ ]」のような並びは対象外）
+          const key = o.text
+            .replace(/[（(]\s*(?:各)?[0-9０-９]+\s*点\s*[）)]/g, '')
+            .replace(/[\s　・、,，.．/／|｜\[\]［］()（）]+/g, '');
           if (!key) return;
           if (seen.has(key)) {
             issues.push({

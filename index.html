@@ -1443,6 +1443,10 @@
       BRACKET: '括弧の対応ミス',
       WORDY: '重複・冗長な表現',
       RA: 'ら抜き言葉',
+      FACT: '計算・単位・数値の誤り',
+      DATE: '日付・年号の不整合',
+      DUP: '選択肢の重複',
+      MIX: '表記・文体の混在',
       USER: 'ユーザー辞書'
     };
 
@@ -1478,6 +1482,19 @@
       ['異句同音', '異口同音'], ['絶対絶命', '絶体絶命'], ['責任転化', '責任転嫁'],
       ['危機一発', '危機一髪'], ['晴天白日', '青天白日'], ['完壁', '完璧']
     ];
+    // 追加の誤記辞書（誤変換・誤字としてほぼ確実なもの）
+    const TYPO_HARD2 = [
+      ['沸謄', '沸騰'], ['蒸溜', '蒸留'], ['光合性', '光合成'], ['気孔' + '孔', '気孔'],
+      ['明治維心', '明治維新'], ['大化の改心', '大化の改新'], ['廃藩置件', '廃藩置県'], ['地租改性', '地租改正'],
+      ['江戸幕符', '江戸幕府'], ['鎌倉幕符', '鎌倉幕府'], ['室町幕符', '室町幕府'],
+      ['一朝一石', '一朝一夕'], ['五里夢中', '五里霧中'], ['以心伝信', '以心伝心'], ['意心伝心', '以心伝心'],
+      ['思考錯誤', '試行錯誤'], ['自我自賛', '自画自賛'], ['心気一転', '心機一転'], ['短刀直入', '単刀直入'],
+      ['順風満班', '順風満帆'], ['針小防大', '針小棒大'], ['二等片三角形', '二等辺三角形'], ['直角二等片', '直角二等辺'],
+      ['因数分壊', '因数分解'], ['対頂覚', '対頂角'], ['同位覚', '同位角'], ['鋭覚', '鋭角'], ['鈍覚', '鈍角'],
+      ['直覚三角形', '直角三角形'], ['二等辺三覚形', '二等辺三角形'], ['正多面対', '正多面体'],
+      ['押しも押されぬ', '押しも押されもせぬ', '正しくは「押しも押されもせぬ」です。']
+    ];
+
     // 表記ゆれ（解答用紙の統一など）
     const STYLE_WORDS = [
       ['回答用紙', '解答用紙', 'テストでは「解答用紙」に統一することを推奨します。'],
@@ -1541,12 +1558,16 @@
       { re: /必ず必要/g, fix: '必要', cat: CAT.WORDY, level: 'warn', tier: 'style', msg: '意味が重複しています。' },
       { re: /非常に大変/g, fix: null, cat: CAT.WORDY, level: 'warn', tier: 'style', msg: '程度を表す語が重複しています。' },
       { re: /約[0-9０-９.]+[^\s。、（）()]{0,4}程度/g, fix: null, cat: CAT.WORDY, level: 'warn', tier: 'style', msg: '「約」と「程度」が重複しています。どちらかにしてください。' },
+      { re: /的を得(?=[たるてなず])/g, fix: m => '的を射', cat: CAT.TYPO, level: 'warn', tier: 'style', msg: '慣用句は「的を射る」が本来の形です（「的を得る」も広まっていますが誤用とされることがあります）。' },
+      { re: /函数/g, fix: '関数', cat: CAT.KANJI, level: 'warn', tier: 'style', msg: '現在は「関数」と書くのが一般的です。' },
+      { re: /[Ａ-Ｚａ-ｚ]+/g, fix: m => m.normalize('NFKC'), cat: CAT.CHAR, level: 'warn', tier: 'style', raw: true, msg: '全角の英字が使われています。半角に統一してください（数式・用語は半角が一般的です）。' },
       { re: /各(?:都道府県|市町村|学年|班|グループ|県|国)ごと/g, fix: m => m.replace(/ごと$/, ''), cat: CAT.WORDY, level: 'warn', tier: 'style', msg: '「各」と「ごと」が重複しています。' }
     ];
 
     const BUILTIN_RULES = [
       ...wordRules(OKURI_HARD, CAT.OKURI, 'error', 'core', '送り仮名の誤りです。'),
       ...wordRules(TYPO_HARD, CAT.TYPO, 'error', 'core', '誤字・変換ミスの可能性が高い表記です。'),
+      ...wordRules(TYPO_HARD2, CAT.TYPO, 'error', 'core', '誤字・変換ミスの可能性が高い表記です。'),
       ...PATTERN_RULES,
       ...wordRules(OKURI_SOFT, CAT.OKURI, 'warn', 'style', '現在の公用文では別の送り仮名が一般的です（許容されている場合もあります）。'),
       ...wordRules(STYLE_WORDS, CAT.STYLE, 'warn', 'style', '表記を統一してください。'),
@@ -1760,6 +1781,204 @@
       return issues;
     }
 
+    // ⑤ 計算・単位・日付の整合性チェック
+    const UNIT_FACTORS = {
+      'km>m': 1000, 'm>cm': 100, 'cm>mm': 10, 'm>mm': 1000, 'km>cm': 100000,
+      'kg>g': 1000, 't>kg': 1000, 'L>mL': 1000, 'L>dL': 10, 'dL>mL': 100,
+      '時間>分': 60, '分>秒': 60, '時間>秒': 3600, '日>時間': 24, '週間>日': 7
+    };
+    const ERA_BASE = { '令和': 2018, '平成': 1988, '昭和': 1925 };
+    const ERA_RANGE = { '令和': [2019, 9999], '平成': [1989, 2019], '昭和': [1926, 1989] };
+
+    function fmtNum(n) {
+      return String(Math.round(n * 1e9) / 1e9);
+    }
+
+    function checkFacts(text) {
+      const issues = [];
+      const lines = text.split(/\r?\n/);
+      const normDigits = t => t.replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+      lines.forEach((raw, i) => {
+        if (!raw.trim()) return;
+        const line = normDigits(raw);
+        let m;
+
+        // 四則演算
+        const reA = /(?<![\d.+\-×÷*\/＋－−A-Za-z])(\d+(?:\.\d+)?)\s*([+＋\-－−×÷*\/])\s*(\d+(?:\.\d+)?)\s*[=＝]\s*(\d+(?:\.\d+)?)(?![\d.])/g;
+        while ((m = reA.exec(line))) {
+          const a = parseFloat(m[1]), b = parseFloat(m[3]), claimed = parseFloat(m[4]);
+          const op = m[2];
+          let v;
+          if ('+＋'.includes(op)) v = a + b;
+          else if ('-－−'.includes(op)) v = a - b;
+          else if ('×*'.includes(op)) v = a * b;
+          else { if (b === 0) continue; v = a / b; if (!Number.isInteger(v) && Number.isInteger(claimed)) continue; }
+          if (Math.abs(v - claimed) > 1e-6 * Math.max(1, Math.abs(v))) {
+            const fixed = m[0].replace(/[\d.]+$/, fmtNum(v));
+            issues.push({
+              level: 'error', category: CAT.FACT,
+              detail: `${i + 1}行目：計算が合っていません。《${m[0]}》 → 正しくは ${fmtNum(v)} です。`,
+              lineIndex: i, wrong: m[0], fix: fixed
+            });
+          }
+        }
+
+        // 単位の換算
+        const reU = /(?<![\d.])1\s*(km|m|cm|kg|t|L|dL|時間|分|日|週間)\s*[=＝]\s*([\d,]+(?:\.\d+)?)\s*(m|cm|mm|g|kg|mL|dL|分|秒|時間|日)(?![A-Za-z])/g;
+        while ((m = reU.exec(line))) {
+          const f = UNIT_FACTORS[`${m[1]}>${m[3]}`];
+          if (!f) continue;
+          const claimed = parseFloat(m[2].replace(/,/g, ''));
+          if (claimed !== f) {
+            issues.push({
+              level: 'error', category: CAT.FACT,
+              detail: `${i + 1}行目：単位の換算が合っていません。《${m[0]}》 → 1${m[1]}は${f}${m[3]}です。`,
+              lineIndex: i, wrong: m[0], fix: m[0].replace(m[2], String(f))
+            });
+          }
+        }
+
+        // 西暦と和暦
+        const reW1 = /(\d{4})年\s*[（(]\s*(令和|平成|昭和)\s*(元|\d{1,2})年\s*[）)]/g;
+        while ((m = reW1.exec(line))) {
+          const y = parseInt(m[1], 10), n = m[3] === '元' ? 1 : parseInt(m[3], 10);
+          if (ERA_BASE[m[2]] + n !== y) {
+            const exp = y - ERA_BASE[m[2]];
+            const [lo, hi] = ERA_RANGE[m[2]];
+            issues.push({
+              level: 'error', category: CAT.DATE,
+              detail: `${i + 1}行目：西暦と和暦が一致しません。《${m[0]}》` + (y >= lo && y <= hi ? ` → ${y}年は${m[2]}${exp === 1 ? '元' : exp}年です。` : ` → ${y}年は${m[2]}の期間外です。`),
+              lineIndex: i, wrong: m[0],
+              fix: (y >= lo && y <= hi) ? m[0].replace(/(令和|平成|昭和)\s*(元|\d{1,2})/, `$1${exp === 1 ? '元' : exp}`) : null
+            });
+          }
+        }
+        const reW2 = /(令和|平成|昭和)\s*(元|\d{1,2})年\s*[（(]\s*(\d{4})年\s*[）)]/g;
+        while ((m = reW2.exec(line))) {
+          const n = m[2] === '元' ? 1 : parseInt(m[2], 10), y = parseInt(m[3], 10);
+          if (ERA_BASE[m[1]] + n !== y) {
+            const expY = ERA_BASE[m[1]] + n;
+            issues.push({
+              level: 'error', category: CAT.DATE,
+              detail: `${i + 1}行目：和暦と西暦が一致しません。《${m[0]}》 → ${m[1]}${m[2]}年は${expY}年です。`,
+              lineIndex: i, wrong: m[0], fix: m[0].replace(/(\d{4})年\s*[）)]$/, `${expY}年）`).replace(/\(\s*\d{4}/, `（${expY}`)
+            });
+          }
+        }
+
+        // 曜日
+        const reD = /(\d{4})年\s*(\d{1,2})月\s*(\d{1,2})日\s*[（(]\s*([月火水木金土日])(?:曜日?)?\s*[）)]/g;
+        while ((m = reD.exec(line))) {
+          const y = +m[1], mo = +m[2], d = +m[3];
+          const dt = new Date(Date.UTC(y, mo - 1, d));
+          if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== d) continue;
+          const wd = '日月火水木金土'[dt.getUTCDay()];
+          if (wd !== m[4]) {
+            issues.push({
+              level: 'error', category: CAT.DATE,
+              detail: `${i + 1}行目：曜日が合っていません。《${m[0]}》 → ${y}年${mo}月${d}日は${wd}曜日です。`,
+              lineIndex: i, wrong: m[0], fix: m[0].replace(/[月火水木金土日](?=(?:曜日?)?\s*[）)])/, wd)
+            });
+          }
+        }
+
+        // 存在しない日付
+        const reX = /(?<![\d])(\d{1,2})月\s*(\d{1,2})日/g;
+        const MAXD = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+        while ((m = reX.exec(line))) {
+          const mo = +m[1], d = +m[2];
+          if (mo < 1 || mo > 12 || d < 1 || d > MAXD[mo - 1]) {
+            issues.push({
+              level: 'warn', category: CAT.DATE,
+              detail: `${i + 1}行目：存在しない日付の可能性があります。《${m[0]}》`,
+              lineIndex: i, wrong: m[0], fix: null
+            });
+          }
+        }
+      });
+      return issues;
+    }
+
+    // ⑥ 選択肢の重複（同じ内容の選択肢が2つある）
+    function checkChoiceDup(text) {
+      const issues = [];
+      const lines = text.split(/\r?\n/);
+      const SYM = '[ア-オ]';
+      const flush = (opts, startLine) => {
+        const seen = new Map();
+        opts.forEach(o => {
+          const key = o.text.replace(/[\s　]+/g, '');
+          if (!key) return;
+          if (seen.has(key)) {
+            issues.push({
+              level: 'warn', category: CAT.DUP,
+              detail: `${o.line + 1}行目：選択肢「${seen.get(key)}」と「${o.sym}」が同じ内容です。《${o.text.trim()}》`,
+              lineIndex: o.line, wrong: o.text.trim(), fix: null
+            });
+          } else seen.set(key, o.sym);
+        });
+      };
+      let multi = [];
+      lines.forEach((raw, i) => {
+        const inline = [...raw.matchAll(new RegExp('(?<![ぁ-んァ-ヶ一-龥A-Za-z0-9])(' + SYM + ')(?=[\\s　.．)）])', 'g'))];
+        if (inline.length >= 3) {
+          if (multi.length) { flush(multi); multi = []; }
+          const opts = inline.map((mm, k) => {
+            const start = mm.index + 1;
+            const end = k + 1 < inline.length ? inline[k + 1].index : raw.length;
+            return { sym: mm[1], text: raw.slice(start, end).replace(/^[\s　.．)）]+/, ''), line: i };
+          });
+          flush(opts);
+        } else {
+          const one = raw.match(new RegExp('^\\s*(' + SYM + ')[\\s　.．)）]+(.*)$'));
+          if (one) multi.push({ sym: one[1], text: one[2], line: i });
+          else if (multi.length) { flush(multi); multi = []; }
+        }
+      });
+      if (multi.length) flush(multi);
+      return issues;
+    }
+
+    // ⑦ 同じ文書内での表記・文体の混在
+    const VARIANT_GROUPS = [
+      { name: '「いっしょ／一緒」', a: /いっしょ/g, b: /一緒/g, aS: 'いっしょ', bS: '一緒' },
+      { name: '「かかわる／関わる」', a: /かかわ[るりらっ]/g, b: /関わ[るりらっ]/g, aS: null, bS: null },
+      { name: '指示文の文末（「〜なさい」と「〜せよ」）', a: /なさい/g, b: /(?:答えよ|求めよ|述べよ|選べ|書け|記せ|せよ)(?=。|$)/g, aS: null, bS: null }
+    ];
+
+    function checkVariants(text) {
+      const issues = [];
+      const lines = text.split(/\r?\n/);
+      VARIANT_GROUPS.forEach(g => {
+        const hitsA = [], hitsB = [];
+        lines.forEach((raw, i) => {
+          g.a.lastIndex = 0; g.b.lastIndex = 0;
+          let m;
+          while ((m = g.a.exec(raw))) { hitsA.push({ i, w: m[0] }); }
+          while ((m = g.b.exec(raw))) { hitsB.push({ i, w: m[0] }); }
+        });
+        if (!hitsA.length || !hitsB.length) return;
+        const minority = hitsA.length < hitsB.length ? hitsA : hitsB;
+        const minIsA = minority === hitsA;
+        const majStr = g.aS ? (minIsA ? g.bS : g.aS) : null;
+        minority.forEach(h => {
+          issues.push({
+            level: 'warn', category: CAT.MIX,
+            detail: `${h.i + 1}行目：${g.name}が混在しています。《${h.w}》` + (majStr ? ` → 多数派の「${majStr}」にそろえることを推奨します。` : ' どちらかに統一してください。'),
+            lineIndex: h.i, wrong: h.w, fix: majStr
+          });
+        });
+      });
+      // 括弧の全角・半角の混在
+      if (/\(/.test(text) && /（/.test(text)) {
+        issues.push({
+          level: 'warn', category: CAT.MIX,
+          detail: '丸括弧の全角「（ ）」と半角「( )」が混在しています。どちらかに統一してください。'
+        });
+      }
+      return issues;
+    }
+
     // 校正エンジン本体
     function proofread(text, opts = {}) {
       const strict = opts.strict !== false;
@@ -1769,7 +1988,10 @@
       return [
         ...applyRules(text, rules, strict),
         ...checkBrackets(text),
-        ...checkLineFormat(text, strict)
+        ...checkLineFormat(text, strict),
+        ...checkFacts(text),
+        ...checkChoiceDup(text),
+        ...(strict ? checkVariants(text) : [])
       ];
     }
     // ===== PROOFREAD ENGINE END =====

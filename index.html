@@ -149,6 +149,11 @@
           <span class="text-xs font-medium text-slate-700">漢字・送りがな・誤字脱字・括弧ミス</span>
         </label>
 
+        <label class="flex items-center gap-2.5 bg-slate-50 border border-slate-200/80 px-3 py-2.5 rounded-xl cursor-pointer select-none hover:bg-slate-100/70 transition" title="初回のみ、文法解析用の辞書（約17MB）をインターネットから読み込みます。入力した文章は送信されません。">
+          <input id="chk-grammar" type="checkbox" checked class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" />
+          <span class="text-xs font-medium text-slate-700">文法チェック（助詞の重複・長すぎる文など）<span class="block text-[10px] text-slate-400">初回のみ辞書（約17MB）を読み込みます</span></span>
+        </label>
+
         <label class="flex items-center gap-2.5 bg-slate-50 border border-slate-200/80 px-3 py-2.5 rounded-xl cursor-pointer select-none hover:bg-slate-100/70 transition">
           <input id="chk-numbering" type="checkbox" checked class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" />
           <span class="text-xs font-medium text-slate-700">設問番号の連番・重複・図表参照</span>
@@ -523,6 +528,7 @@
       scoreWrapper: document.getElementById('score-input-wrapper'),
       inputScore: document.getElementById('input-target-score'),
       chkTypos: document.getElementById('chk-typos'),
+      chkGrammar: document.getElementById('chk-grammar'),
       chkNumbering: document.getElementById('chk-numbering'),
       chkConsistency: document.getElementById('chk-consistency'),
       selectStrict: document.getElementById('select-strictness'),
@@ -1192,7 +1198,7 @@
           q: el.textQ.value, a: el.textA.value, key: el.textKey.value,
           oq: el.ocrQ.value, oa: el.ocrA.value, ok: el.ocrK.value,
           score: el.inputScore.value, scoreOn: el.chkScore.checked,
-          typos: el.chkTypos.checked, numbering: el.chkNumbering.checked, consistency: el.chkConsistency.checked,
+          typos: el.chkTypos.checked, grammar: el.chkGrammar.checked, numbering: el.chkNumbering.checked, consistency: el.chkConsistency.checked,
           subject: el.selectSubject.value
         }));
       } catch (e) { /* 保存できない環境では何もしない */ }
@@ -1219,6 +1225,7 @@
         el.inputScore.disabled = !el.chkScore.checked;
         el.scoreWrapper.classList.toggle('opacity-40', !el.chkScore.checked);
         el.chkTypos.checked = d.typos !== false;
+        el.chkGrammar.checked = d.grammar !== false;
         el.chkNumbering.checked = d.numbering !== false;
         el.chkConsistency.checked = d.consistency !== false;
         if (d.subject) el.selectSubject.value = d.subject;
@@ -1227,7 +1234,7 @@
       } catch (e) { /* 壊れた保存データは無視する */ }
     }
 
-    [el.chkScore, el.chkTypos, el.chkNumbering, el.chkConsistency, el.selectSubject].forEach(x => x.addEventListener('change', saveStateDebounced));
+    [el.chkScore, el.chkTypos, el.chkGrammar, el.chkNumbering, el.chkConsistency, el.selectSubject].forEach(x => x.addEventListener('change', saveStateDebounced));
     el.inputScore.addEventListener('input', saveStateDebounced);
     el.textKey.addEventListener('input', saveStateDebounced);
     el.ocrK.addEventListener('input', saveStateDebounced);
@@ -1495,6 +1502,31 @@
       ['押しも押されぬ', '押しも押されもせぬ', '正しくは「押しも押されもせぬ」です。']
     ];
 
+    // 教科別の追加誤記辞書（誤字としてほぼ確実なもの。理科・社会・数学・外来語の表記）
+    const TYPO_HARD3 = [
+      // 理科
+      ['背椎', '脊椎'], ['堆績', '堆積'], ['電磁誘動', '電磁誘導'], ['静電機', '静電気'], ['摩察', '摩擦'],
+      ['ナトリュウム', 'ナトリウム'], ['カルシュウム', 'カルシウム'], ['マグネシュウム', 'マグネシウム'],
+      ['アンモニヤ', 'アンモニア'],
+      // 社会
+      ['聖徳大使', '聖徳太子'], ['中大兄王子', '中大兄皇子'], ['衆議員', '衆議院'], ['参議員', '参議院'],
+      ['最高裁判書', '最高裁判所'], ['径線', '経線'], ['偉線', '緯線'], ['赤堂', '赤道'],
+      ['オーストラリヤ', 'オーストラリア'], ['イタリヤ', 'イタリア'], ['アジヤ', 'アジア'], ['ユーラシヤ', 'ユーラシア'],
+      // 数学
+      ['有利数', '有理数'], ['無利数', '無理数'], ['絶対置', '絶対値'], ['座票', '座標'],
+      ['最小公倍素', '最小公倍数'], ['最大公約素', '最大公約数'], ['素因数分壊', '素因数分解'],
+      // 一般（ひらがなの誤記）
+      ['ふいんき', '雰囲気'], ['こんにちわ', 'こんにちは'], ['こんばんわ', 'こんばんは'], ['すいません', 'すみません']
+    ];
+
+    // 公用文に沿ったひらがな表記の推奨（表記の統一用）
+    const KANA_WORDS2 = [
+      ['且つ', 'かつ'], ['更に', 'さらに'], ['先ず', 'まず'], ['暫く', 'しばらく'], ['既に', 'すでに'],
+      ['全く', 'まったく'], ['極めて', 'きわめて'], ['色々', 'いろいろ'], ['出来る', 'できる'], ['迄', 'まで'],
+      ['丁度', 'ちょうど'], ['沢山', 'たくさん'], ['一寸', 'ちょっと'], ['成る程', 'なるほど'], ['有難う', 'ありがとう'],
+      ['敢えて', 'あえて'], ['殊に', 'ことに'], ['尚、', 'なお、'], ['因みに', 'ちなみに']
+    ];
+
     // 表記ゆれ（解答用紙の統一など）
     const STYLE_WORDS = [
       ['回答用紙', '解答用紙', 'テストでは「解答用紙」に統一することを推奨します。'],
@@ -1568,12 +1600,23 @@
       ...wordRules(OKURI_HARD, CAT.OKURI, 'error', 'core', '送り仮名の誤りです。'),
       ...wordRules(TYPO_HARD, CAT.TYPO, 'error', 'core', '誤字・変換ミスの可能性が高い表記です。'),
       ...wordRules(TYPO_HARD2, CAT.TYPO, 'error', 'core', '誤字・変換ミスの可能性が高い表記です。'),
+      ...wordRules(TYPO_HARD3, CAT.TYPO, 'error', 'core', '誤字・変換ミスの可能性が高い表記です。'),
       ...PATTERN_RULES,
       ...wordRules(OKURI_SOFT, CAT.OKURI, 'warn', 'style', '現在の公用文では別の送り仮名が一般的です（許容されている場合もあります）。'),
       ...wordRules(STYLE_WORDS, CAT.STYLE, 'warn', 'style', '表記を統一してください。'),
       ...wordRules(KANJI_WORDS, CAT.KANJI, 'warn', 'style', '漢字表記を推奨します（読み仮名を答えさせる問題など、意図的なひらがなであれば問題ありません）。'),
-      ...wordRules(KANA_WORDS, CAT.KANA, 'warn', 'style', 'ひらがな表記が一般的です。')
+      ...wordRules(KANA_WORDS, CAT.KANA, 'warn', 'style', 'ひらがな表記が一般的です。'),
+      ...wordRules(KANA_WORDS2, CAT.KANA, 'warn', 'style', '公用文ではひらがな表記が一般的です。')
     ];
+
+    // 外来語の長音の書き忘れ（実験器具・理科用語）
+    [['ビーカ', 'ビーカー'], ['バーナ', 'バーナー'], ['エネルギ', 'エネルギー'], ['ヒータ', 'ヒーター'],
+     ['センサ', 'センサー'], ['フィルタ', 'フィルター'], ['コンデンサ', 'コンデンサー'], ['ピンセッ', 'ピンセット']].forEach(([w, r]) => {
+      BUILTIN_RULES.push({
+        re: new RegExp(w + (w === 'ピンセッ' ? '(?!ト)' : '(?!ー)'), 'g'), fix: r, cat: CAT.STYLE, level: 'warn', tier: 'style',
+        msg: '長音（ー）や語尾が抜けている可能性があります。教科書の表記を確認してください。'
+      });
+    });
 
     // 機種依存文字の単位記号 → 半角英字
     const UNIT_MAP = { '㎝': 'cm', '㎜': 'mm', '㎞': 'km', '㎏': 'kg', '㎖': 'mL', '㎡': 'm²', '㎥': 'm³', '㏄': 'cc' };
@@ -1982,6 +2025,88 @@
       return issues;
     }
 
+    // ⑧ 形態素解析（kuromoji）の結果を使った文法チェック
+    //    tokens は kuromoji の tokenize() の戻り値（surface_form, pos, pos_detail_1, word_position など）
+    CAT.GRAM = '文法・文の構造';
+    function checkGrammarTokens(tokens, line, lineIndex) {
+      const issues = [];
+      const sentences = [];
+      let cur = [];
+      tokens.forEach(t => {
+        cur.push(t);
+        if (t.surface_form === '。' || t.surface_form === '．') { sentences.push({ toks: cur, closed: true }); cur = []; }
+      });
+      if (cur.length) sentences.push({ toks: cur, closed: false });
+      const at = t => (t.word_position || 1) - 1;
+      const push = (level, detail, wrong, fix) => issues.push({
+        level, category: CAT.GRAM, detail: `${lineIndex + 1}行目：${detail}`, lineIndex, wrong: wrong || undefined, fix: fix || null
+      });
+      const isVerb = t => t.pos === '動詞';
+      const isComma = t => t.surface_form === '、' || t.surface_form === '，';
+
+      sentences.forEach(({ toks, closed }) => {
+        const body = toks.filter(t => !/^[\s　]+$/.test(t.surface_form));
+        const text = toks.map(t => t.surface_form).join('');
+
+        // 同じ格助詞・係助詞が、読点や述語をはさまず繰り返されている
+        ['が', 'を', 'は', 'に'].forEach(p => {
+          let last = -1;
+          body.forEach((t, k) => {
+            if (!(t.pos === '助詞' && t.surface_form === p && ['格助詞', '係助詞'].includes(t.pos_detail_1))) return;
+            if (last >= 0) {
+              const between = body.slice(last + 1, k);
+              const blocked = between.some(x => isComma(x) || isVerb(x) || (x.pos === '助詞' && x.pos_detail_1 === '接続助詞'));
+              if (!blocked && between.length >= 1) {
+                const prev = body[k - 1];
+                push('warn', `「${p}」が1つの文で重複しています。${makeExcerpt(line, at(t) - (prev ? prev.surface_form.length : 0), (prev ? prev.surface_form.length : 0) + 1)} 言い換えるか、文を分けることを検討してください。`, (prev ? prev.surface_form : '') + p);
+              }
+            }
+            last = k;
+          });
+        });
+
+        // 「の」の3連続
+        const nos = body.map((t, k) => ({ t, k })).filter(x => x.t.pos === '助詞' && x.t.surface_form === 'の' && x.t.pos_detail_1 === '連体化');
+        for (let a = 0; a + 2 < nos.length; a++) {
+          if (at(nos[a + 2].t) - at(nos[a].t) <= 18) {
+            push('warn', `「の」が短い間に3回以上続いています。${makeExcerpt(line, at(nos[a].t) - 1, at(nos[a + 2].t) - at(nos[a].t) + 2)} 読みにくい文になっていないか確認してください。`);
+            break;
+          }
+        }
+
+        // 文が助詞で終わっている
+        if (closed) {
+          const real = body.filter(t => !['。', '．'].includes(t.surface_form) && t.pos !== '記号');
+          const lastTok = real[real.length - 1];
+          if (lastTok && lastTok.pos === '助詞' && ['格助詞', '係助詞', '連体化'].includes(lastTok.pos_detail_1) && real.length >= 3) {
+            push('error', `文が助詞「${lastTok.surface_form}」で終わっています。言葉が抜けていないか確認してください。${makeExcerpt(line, at(lastTok) - 3, 5)}`);
+          }
+        }
+
+        // 一文が長い・読点が多い
+        if (closed && text.length > 100) {
+          push('warn', `一文が長すぎます（${text.length}文字）。2つの文に分けることを検討してください。`);
+        }
+        const commas = body.filter(isComma).length;
+        if (commas >= 5) {
+          push('warn', `1つの文に読点が${commas}個あります。読みにくくなっていないか確認してください。`);
+        }
+
+        // 以外／意外の取り違え
+        body.forEach((t, k) => {
+          const nx = body[k + 1];
+          if (t.surface_form === '以外' && nx && nx.surface_form === 'な' && ['助動詞', '助詞'].includes(nx.pos)) {
+            push('warn', `「以外な」は「意外な」の誤りではありませんか。${makeExcerpt(line, at(t), 3)}`, '以外な', '意外な');
+          }
+          if (t.surface_form === '意外' && nx && ['は', 'を', 'に', 'の'].includes(nx.surface_form) && nx.pos === '助詞' &&
+              k > 0 && ['名詞', '代名詞'].includes(body[k - 1].pos)) {
+            push('warn', `「意外${nx.surface_form}」は「以外${nx.surface_form}」の誤りではありませんか。${makeExcerpt(line, at(t) - body[k - 1].surface_form.length, body[k - 1].surface_form.length + 3)}`, '意外' + nx.surface_form, '以外' + nx.surface_form);
+          }
+        });
+      });
+      return issues;
+    }
+
     // 校正エンジン本体
     function proofread(text, opts = {}) {
       const strict = opts.strict !== false;
@@ -1998,6 +2123,32 @@
       ];
     }
     // ===== PROOFREAD ENGINE END =====
+
+    // ---- 形態素解析（kuromoji）の遅延読み込み ----
+    let tokenizerPromise = null;
+    function loadTokenizer() {
+      if (tokenizerPromise) return tokenizerPromise;
+      const base = 'https://cdn.jsdelivr.net/npm/kuromoji@0.1.2/';
+      tokenizerPromise = new Promise((resolve, reject) => {
+        const done = () => window.kuromoji.builder({ dicPath: base + 'dict/' }).build((err, tk) => err ? reject(err) : resolve(tk));
+        if (window.kuromoji) return done();
+        const sc = document.createElement('script');
+        sc.src = base + 'build/kuromoji.js';
+        sc.onload = done;
+        sc.onerror = () => reject(new Error('script'));
+        document.head.appendChild(sc);
+      }).catch(err => { tokenizerPromise = null; throw err; });
+      return tokenizerPromise;
+    }
+
+    function checkGrammar(tokenizer, text) {
+      const out = [];
+      text.split(/\r?\n/).forEach((line, i) => {
+        if (!line.trim()) return;
+        try { out.push(...checkGrammarTokens(tokenizer.tokenize(line), line, i)); } catch (e) { console.error(e); }
+      });
+      return out;
+    }
 
     function checkTyposAndKanji(text) {
       return proofread(text, {
@@ -2082,6 +2233,17 @@
 
         // 1. 漢字・送りがな・誤字脱字・括弧チェック
         //    入力テキストと画像ごとの読み取り結果を別々に校正し、行番号と元の場所を対応させる
+        let tokenizer = null;
+        let grammarFailed = false;
+        if (el.chkGrammar.checked && el.chkTypos.checked) {
+          try {
+            el.progressText.textContent = '文法チェック用の辞書を読み込み中です（初回のみ・約17MB。入力した文章は送信されません）...';
+            tokenizer = await loadTokenizer();
+          } catch (e) {
+            console.error(e);
+            grammarFailed = true;
+          }
+        }
         if (el.chkTypos.checked) {
           const proofSources = [
             { label: '問題用紙', text: el.textQ.value, ta: 'textQ', offset: 0 },
@@ -2091,7 +2253,7 @@
           ];
           proofSources.forEach(sheet => {
             if (!sheet.text.trim()) return;
-            checkTyposAndKanji(sheet.text).forEach(t => {
+            [...checkTyposAndKanji(sheet.text), ...(tokenizer ? checkGrammar(tokenizer, sheet.text) : [])].forEach(t => {
               const issue = { level: t.level, category: `${t.category}（${sheet.label}）`, detail: t.detail };
               if (t.lineIndex != null) {
                 const absLine = sheet.offset + t.lineIndex;
@@ -2104,6 +2266,14 @@
               }
               issues.push(issue);
             });
+          });
+        }
+
+        if (grammarFailed) {
+          issues.push({
+            level: 'warn',
+            category: '文法チェック（未実施）',
+            detail: '文法チェック用の辞書を読み込めなかったため、助詞の重複や長すぎる文などの確認は行っていません。ネットワーク接続を確認して、もう一度実行してください（チェックを外せばこの表示は出ません）。'
           });
         }
 

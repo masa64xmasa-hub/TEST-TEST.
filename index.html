@@ -2327,7 +2327,9 @@
     let tokenizerPromise = null;
     // 辞書ファイルごとのおおよその重み（進捗%の目安用。実サイズに近い比率）
     const DICT_WEIGHTS = { 'base.dat.gz': 3.7, 'check.dat.gz': 3.0, 'tid.dat.gz': 1.5, 'tid_pos.dat.gz': 5.6, 'tid_map.dat.gz': 1.5, 'cc.dat.gz': 1.7, 'unk.dat.gz': 0.05, 'unk_pos.dat.gz': 0.01, 'unk_map.dat.gz': 0.01, 'unk_char.dat.gz': 0.01, 'unk_compat.dat.gz': 0.01, 'unk_invoke.dat.gz': 0.01 };
-    const KUROMOJI_BASES = ['https://cdn.jsdelivr.net/npm/kuromoji@0.1.2/', 'https://unpkg.com/kuromoji@0.1.2/'];
+    // 1つ目は自分のサイト内（kuromoji/ フォルダを置いた場合のみ有効）。なければ外部の配信元を順に試す
+    const KUROMOJI_BASES = ['kuromoji/', 'https://cdn.jsdelivr.net/npm/kuromoji@0.1.2/', 'https://unpkg.com/kuromoji@0.1.2/'];
+    const STALL_MS = 20000;
     let tokenizerError = '';
     function loadScriptOnce(src) {
       return new Promise((resolve, reject) => {
@@ -2372,14 +2374,23 @@
       tokenizerPromise = (async () => {
         const errs = [];
         for (const base of KUROMOJI_BASES) {
+          const label = base.startsWith('http') ? base.split('/')[2] : 'このサイト内';
+          let timer = null, rejectStall;
+          const stalled = new Promise((_, rej) => { rejectStall = rej; });
+          const arm = () => { clearTimeout(timer); timer = setTimeout(() => rejectStall(new Error(`${STALL_MS / 1000}秒間進みませんでした（接続が制限されている可能性があります）`)), STALL_MS); };
+          const prog = (pct, phase) => { arm(); if (onProgress) onProgress(pct, phase); };
           try {
-            if (!window.kuromoji) await loadScriptOnce(base + 'build/kuromoji.js');
-            const tk = await buildTokenizer(base, onProgress);
+            arm();
+            if (onProgress) onProgress(0, 'connect', label);
+            if (!window.kuromoji) await Promise.race([loadScriptOnce(base + 'build/kuromoji.js'), stalled]);
+            const tk = await Promise.race([buildTokenizer(base, prog), stalled]);
+            clearTimeout(timer);
             if (onProgress) onProgress(100, 'ready');
             return tk;
           } catch (e) {
+            clearTimeout(timer);
             console.error(e);
-            errs.push(base.split('/')[2] + '：' + (e && e.message ? e.message : (e && e.type) || String(e)));
+            if (base.startsWith('http')) errs.push(label + '：' + (e && e.message ? e.message : (e && e.type) || String(e)));
             if (onProgress) onProgress(0, 'retry');
           }
         }
@@ -2791,11 +2802,12 @@
         let grammarFailed = false;
         if (el.chkGrammar.checked && el.chkTypos.checked) {
           try {
-            const dictMsg = (pct, phase) => {
+            const dictMsg = (pct, phase, src) => {
               el.progressBar.style.width = pct + '%';
               el.progressText.textContent = phase === 'ready'
                 ? '文法チェック用の辞書の準備ができました（100%）'
                 : phase === 'retry' ? '辞書の取得に失敗したため、別の配信元で再試行しています...'
+                : phase === 'connect' ? `辞書の配信元に接続しています（${src}）...`
                 : `文法チェック用の辞書を読み込み中です：${pct}%（初回のみ・約17MB。入力した文章は送信されません）`;
             };
             dictMsg(0, 'download');

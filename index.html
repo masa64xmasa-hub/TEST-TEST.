@@ -185,6 +185,15 @@
           </select>
         </label>
 
+        <label id="grade-wrap" class="hidden inline-flex items-center gap-2 text-xs font-medium text-slate-700">
+          <span class="whitespace-nowrap">学年別の漢字チェック</span>
+          <select id="select-grade" class="border border-slate-300 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="0">使わない</option>
+            <option value="1">小学1年向け</option><option value="2">小学2年向け</option><option value="3">小学3年向け</option>
+            <option value="4">小学4年向け</option><option value="5">小学5年向け</option><option value="6">小学6年向け</option>
+          </select>
+        </label>
+
         <details class="flex-1 min-w-[260px] bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
           <summary class="text-xs font-medium text-slate-700 cursor-pointer select-none">ユーザー辞書（よくある誤表記を登録して自動チェック）</summary>
           <div class="mt-2 space-y-1.5">
@@ -325,6 +334,15 @@
       </div>
     </details>
 
+    <!-- 前回のテストとの差分（任意） -->
+    <details id="prev-card" class="no-print bg-white rounded-xl border border-slate-200 px-5 py-3 shadow-sm">
+      <summary class="text-sm font-bold text-slate-800 cursor-pointer select-none">前回のテストとの差分を確認する（任意）</summary>
+      <div class="mt-3 space-y-2">
+        <p class="text-xs text-slate-500 leading-relaxed">去年や前回の問題用紙のテキストを貼り付けると、今回のテストで「追加・変更・削除された行」を一覧にします。使い回しのテストで、うっかり変えた箇所の確認に使えます（結果の「確度が低い指摘」に表示されます）。</p>
+        <textarea id="text-prev" rows="5" placeholder="前回の問題用紙のテキストをここに貼り付けます" class="w-full px-3 py-2 text-xs sm:text-sm leading-relaxed font-mono-editor border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"></textarea>
+      </div>
+    </details>
+
     <!-- チェック実行ボタン -->
     <div class="no-print flex justify-center">
       <button id="btn-run-check" type="button" class="w-full sm:w-auto min-w-[320px] bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:bg-slate-400 disabled:cursor-not-allowed text-white font-bold text-base px-8 py-4 rounded-xl shadow-md hover:shadow-lg transition flex items-center justify-center gap-2.5">
@@ -377,6 +395,7 @@
           </div>
         </div>
 
+        <p id="ignore-note" class="no-print hidden text-xs text-slate-500"></p>
         <div id="issues-list" class="space-y-3"></div>
       </div>
 
@@ -480,6 +499,7 @@
       <a id="link-feedback" href="#" target="_blank" rel="noopener" class="hidden underline hover:text-slate-700">ご意見・不具合の報告</a>
     </p>
     <p><strong>入力した文章・画像・PDFの内容は外部に送信・保存されず、お使いのブラウザ内で処理されます。</strong></p>
+    <p id="shared-dict-note" class="text-[11px] text-slate-400"></p>
     <p>&copy; 2026 TEST-TEST. All rights reserved.</p>
   </footer>
 
@@ -507,6 +527,9 @@
       latestIssues: [],
       currentFilter: 'all',
       imageSeq: Date.now(),
+      ignore: new Set(),
+      sharedRules: [],
+      gradeMap: null,
       marks: {}
     };
 
@@ -532,6 +555,11 @@
       selectStrict: document.getElementById('select-strictness'),
       customDict: document.getElementById('text-custom-dict'),
       selectSubject: document.getElementById('select-subject'),
+      selectGrade: document.getElementById('select-grade'),
+      gradeWrap: document.getElementById('grade-wrap'),
+      textPrev: document.getElementById('text-prev'),
+      ignoreNote: document.getElementById('ignore-note'),
+      sharedNote: document.getElementById('shared-dict-note'),
       textKey: document.getElementById('text-key'),
       ocrQ: document.getElementById('ocr-question'),
       ocrA: document.getElementById('ocr-answer'),
@@ -572,7 +600,7 @@
     // 設置者が設定する値。空のままなら該当の表示は出ません。
     const SITE_CONFIG = {
       proInterestUrl: '', // 有料版アンケート（Googleフォーム等）のURL
-      feedbackUrl: ''     // ご意見・不具合報告フォームのURL
+      feedbackUrl: 'https://forms.gle/XR36nJP22q7D1xr9A'     // ご意見・不具合報告フォームのURL
     };
     if (SITE_CONFIG.proInterestUrl) {
       document.getElementById('link-pro').href = SITE_CONFIG.proInterestUrl;
@@ -1017,6 +1045,7 @@
       el.ocrQ.value = '';
       el.ocrA.value = '';
       el.textKey.value = '';
+      el.textPrev.value = '';
       el.ocrK.value = '';
       state.keyImages = [];
       renderPreviews('key');
@@ -1194,7 +1223,7 @@
       try {
         localStorage.setItem(SAVE_KEY, JSON.stringify({
           q: el.textQ.value, a: el.textA.value, key: el.textKey.value,
-          oq: el.ocrQ.value, oa: el.ocrA.value, ok: el.ocrK.value,
+          oq: el.ocrQ.value, oa: el.ocrA.value, ok: el.ocrK.value, prev: el.textPrev.value,
           score: el.inputScore.value, scoreOn: el.chkScore.checked,
           typos: el.chkTypos.checked, grammar: el.chkGrammar.checked, numbering: el.chkNumbering.checked, consistency: el.chkConsistency.checked,
           subject: el.selectSubject.value
@@ -1218,6 +1247,7 @@
         el.ocrQ.value = d.oq || '';
         el.ocrA.value = d.oa || '';
         el.ocrK.value = d.ok || '';
+        el.textPrev.value = d.prev || '';
         if (d.score) el.inputScore.value = d.score;
         el.chkScore.checked = d.scoreOn !== false;
         el.inputScore.disabled = !el.chkScore.checked;
@@ -1236,6 +1266,7 @@
     el.inputScore.addEventListener('input', saveStateDebounced);
     el.textKey.addEventListener('input', saveStateDebounced);
     el.ocrK.addEventListener('input', saveStateDebounced);
+    el.textPrev.addEventListener('input', saveStateDebounced);
 
     // ==========================================================
     // 修正案の適用
@@ -1261,6 +1292,12 @@
     }
 
     el.issuesList.addEventListener('click', async (e) => {
+      const ig = e.target.closest('[data-ignore]');
+      if (ig) {
+        const k = issueKey(state.latestIssues[Number(ig.dataset.ignore)]);
+        if (k) { state.ignore.add(k); saveIgnore(); showToast('この指摘は今後表示しません。もう一度チェックします'); await runCheck(); }
+        return;
+      }
       const btn = e.target.closest('[data-apply]');
       if (!btn) return;
       const issue = state.latestIssues[Number(btn.dataset.apply)];
@@ -1271,9 +1308,15 @@
       }
     });
 
+    el.ignoreNote.addEventListener('click', async (e) => {
+      if (!e.target.closest('#btn-ignore-reset')) return;
+      state.ignore.clear(); saveIgnore(); showToast('無視リストをリセットしました。もう一度チェックします'); await runCheck();
+    });
+    window.addEventListener('beforeprint', () => document.querySelectorAll('#issues-list details').forEach(d => { d.open = true; }));
+
     el.btnApplyAll.addEventListener('click', async () => {
       let n = 0;
-      state.latestIssues.forEach(issue => { if (applyIssueFix(issue)) n++; });
+      state.latestIssues.forEach(issue => { if (!issue.noBulk && applyIssueFix(issue)) n++; });
       if (n > 0) await afterApply(n);
       else showToast('適用できる修正案がありませんでした');
     });
@@ -1286,8 +1329,8 @@
         showToast('保存する指摘事項がありません（問題なし）');
         return;
       }
-      const rows = [['レベル', 'カテゴリ', '内容']];
-      state.latestIssues.forEach(i => rows.push([i.level === 'error' ? '要修正' : '確認推奨', i.category, i.detail]));
+      const rows = [['レベル', '確度', 'カテゴリ', '内容']];
+      state.latestIssues.forEach(i => rows.push([i.level === 'error' ? '要修正' : '確認推奨', i.score >= 3 ? '高' : i.score === 2 ? '中' : '低', i.category, i.detail]));
       const csv = '﻿' + rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\r\n');
       const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
       const a = document.createElement('a');
@@ -1564,7 +1607,7 @@
 
     const PATTERN_RULES = [
       { re: /答(?:え|なさい)?なさ(?![いそ])|(?:選び|求め|書き|述べ|説明し|示し)なさ(?![いそ])/g, fix: null, cat: CAT.TYPO, level: 'error', tier: 'core', msg: '「なさい」の語尾が欠けている可能性があります。' },
-      { re: /(?<=[一-龥ァ-ヶ])([をがにでのは])\1/g, fix: m => m[0], cat: CAT.TYPO, level: 'warn', tier: 'core', msg: '助詞が重複しています。' },
+      { re: /(?<=[一-龥ァ-ヶ])([をがにでのは])\1(?!き)/g, fix: m => m[0], cat: CAT.TYPO, level: 'warn', tier: 'core', msg: '助詞が重複しています。' },
       { re: /([ぁ-ん一-龥])\1{2,}/g, fix: null, cat: CAT.TYPO, level: 'warn', tier: 'core', msg: '同じ文字が3回以上連続しています。入力ミスでないか確認してください。' },
       { re: /。。+/g, fix: '。', cat: CAT.PUNCT, level: 'error', tier: 'core', msg: '句点が重複しています。' },
       { re: /、、+/g, fix: '、', cat: CAT.PUNCT, level: 'error', tier: 'core', msg: '読点が重複しています。' },
@@ -1738,7 +1781,8 @@
                 (fix ? ` → 修正案「${fix}」` : '') + `　${rule.msg}`,
               lineIndex: i,
               wrong: m[0],
-              fix: fix || null
+              fix: fix || null,
+              tier: rule.tier
             });
           }
         });
@@ -2122,6 +2166,40 @@
     }
     // ===== PROOFREAD ENGINE END =====
 
+    // ---- 無視リスト（「今後表示しない」を押した指摘）と共有データの読み込み ----
+    const IGN_KEY = 'testtest_ignore_v1';
+    try { state.ignore = new Set(JSON.parse(localStorage.getItem(IGN_KEY) || '[]')); } catch (e) { state.ignore = new Set(); }
+    function saveIgnore() { try { localStorage.setItem(IGN_KEY, JSON.stringify([...state.ignore])); } catch (e) { /* 保存できなくても動作する */ } }
+    const baseCategory = c => String(c).replace(/（[^）]*）$/, '');
+    function issueKey(i) { if (i.key) return i.key; if (i.wrong) return baseCategory(i.category) + '|' + i.wrong; return null; }
+
+    // 共有辞書（dictionary.json）と学年別漢字表（kanji-grades.json）：置いてあるときだけ読み込む
+    async function fetchJsonQuiet(path) {
+      try {
+        const ctl = new AbortController();
+        const timer = setTimeout(() => ctl.abort(), 5000);
+        const r = await fetch(path, { cache: 'no-cache', signal: ctl.signal });
+        clearTimeout(timer);
+        if (!r.ok) return null;
+        return await r.json();
+      } catch (e) { return null; }
+    }
+    (async () => {
+      const dict = await fetchJsonQuiet('dictionary.json');
+      if (dict && Array.isArray(dict.typos)) {
+        state.sharedRules = dict.typos.filter(x => Array.isArray(x) && x[0]).map(([w, r]) => ({
+          re: new RegExp(escapeRegExp(w), 'g'), fix: r || null, cat: '共有辞書', level: 'error', tier: 'core', msg: '共有辞書に登録された誤表記です。'
+        }));
+        if (state.sharedRules.length) el.sharedNote.textContent = `共有辞書 ${state.sharedRules.length}語を読み込みました`;
+      }
+      const kg = await fetchJsonQuiet('kanji-grades.json');
+      if (kg && typeof kg === 'object') {
+        const map = {};
+        Object.entries(kg).forEach(([g, chars]) => { if (/^[1-6]$/.test(g)) for (const ch of String(chars)) map[ch] = parseInt(g, 10); });
+        if (Object.keys(map).length > 100) { state.gradeMap = map; el.gradeWrap.classList.remove('hidden'); }
+      }
+    })();
+
     // ---- 形態素解析（kuromoji）の遅延読み込み ----
     let tokenizerPromise = null;
     function loadTokenizer() {
@@ -2151,7 +2229,7 @@
     function checkTyposAndKanji(text) {
       return proofread(text, {
         strict: el.selectStrict.value === 'strict',
-        custom: parseCustomDict(el.customDict.value),
+        custom: [...parseCustomDict(el.customDict.value), ...state.sharedRules],
         subject: el.selectSubject.value
       });
     }
@@ -2199,6 +2277,312 @@
       el.sectionTotalsTbody.innerHTML = rows.join('');
     }
 
+    // ===== SMART CHECKS START =====
+    // ---- 有理数（BigInt）と一次式の計算 ----
+    function gcdB(a, b) { a = a < 0n ? -a : a; b = b < 0n ? -b : b; while (b) { [a, b] = [b, a % b]; } return a; }
+    function Qn(n, d = 1n) { if (d < 0n) { n = -n; d = -d; } const g = gcdB(n, d) || 1n; return { n: n / g, d: d / g }; }
+    const qAdd = (a, b) => Qn(a.n * b.d + b.n * a.d, a.d * b.d);
+    const qSub = (a, b) => Qn(a.n * b.d - b.n * a.d, a.d * b.d);
+    const qMul = (a, b) => Qn(a.n * b.n, a.d * b.d);
+    const qDiv = (a, b) => { if (b.n === 0n) throw new Error('div0'); return Qn(a.n * b.d, a.d * b.n); };
+    const qEq = (a, b) => a.n === b.n && a.d === b.d;
+    const qZero = () => Qn(0n);
+    function qFromDecimal(str) { const [i, f = ''] = str.split('.'); return Qn(BigInt(i + f), 10n ** BigInt(f.length)); }
+    function qFmt(a) {
+      if (a.d === 1n) return a.n.toString();
+      return `${a.n}/${a.d}（約${Math.round(Number(a.n) / Number(a.d) * 1e6) / 1e6}）`;
+    }
+    // 一次式 a*x + b
+    const pConst = q => ({ a: qZero(), b: q });
+    const pAdd = (p, q) => ({ a: qAdd(p.a, q.a), b: qAdd(p.b, q.b) });
+    const pSub = (p, q) => ({ a: qSub(p.a, q.a), b: qSub(p.b, q.b) });
+    function pMul(p, q) {
+      const pz = p.a.n === 0n, qz = q.a.n === 0n;
+      if (!pz && !qz) throw new Error('nonlinear');
+      if (pz) return { a: qMul(p.b, q.a), b: qMul(p.b, q.b) };
+      return { a: qMul(q.b, p.a), b: qMul(q.b, p.b) };
+    }
+    function pDiv(p, q) {
+      if (q.a.n !== 0n) throw new Error('nonlinear');
+      return { a: qDiv(p.a, q.b), b: qDiv(p.b, q.b) };
+    }
+    function pPow(p, e) {
+      if (e === 0) return pConst(Qn(1n));
+      if (e < 0) { if (p.a.n !== 0n) throw new Error('nonlinear'); return pConst(qDiv(Qn(1n), pPow(p, -e).b)); }
+      if (e > 12) throw new Error('big');
+      let r = p;
+      for (let k = 1; k < e; k++) r = pMul(r, p);
+      return r;
+    }
+
+    function normMath(t) {
+      return String(t)
+        .replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+        .replace(/[ｘＸX]/g, 'x')
+        .replace(/[（]/g, '(').replace(/[）]/g, ')')
+        .replace(/×/g, '*').replace(/÷/g, '/').replace(/[−－―ー‐]/g, '-').replace(/＋/g, '+').replace(/＝/g, '=')
+        .replace(/²/g, '^2').replace(/³/g, '^3');
+    }
+
+    function parsePoly(src) {
+      const s = normMath(src).replace(/\s+/g, '');
+      let i = 0;
+      const peek = () => s[i];
+      function expr() {
+        let v = term();
+        while (peek() === '+' || peek() === '-') { const op = s[i++]; const r = term(); v = op === '+' ? pAdd(v, r) : pSub(v, r); }
+        return v;
+      }
+      function term() {
+        let v = power();
+        for (;;) {
+          const c = peek();
+          if (c === '*' || c === '/') { i++; const r = power(); v = c === '*' ? pMul(v, r) : pDiv(v, r); }
+          else if (c === 'x' || c === '(') { v = pMul(v, power()); }
+          else break;
+        }
+        return v;
+      }
+      function power() {
+        let b = unary();
+        if (peek() === '^') {
+          i++;
+          let sign = 1;
+          if (peek() === '-') { sign = -1; i++; }
+          const m = /^\d+/.exec(s.slice(i));
+          if (!m) throw new Error('exp');
+          i += m[0].length;
+          b = pPow(b, sign * parseInt(m[0], 10));
+        }
+        return b;
+      }
+      function unary() {
+        if (peek() === '-') { i++; const v = unary(); return pSub(pConst(qZero()), v); }
+        if (peek() === '+') { i++; return unary(); }
+        return primary();
+      }
+      function primary() {
+        const c = peek();
+        if (c === '(') { i++; const v = expr(); if (peek() !== ')') throw new Error('paren'); i++; return v; }
+        if (c === 'x') { i++; return { a: Qn(1n), b: qZero() }; }
+        const m = /^\d+(?:\.\d+)?/.exec(s.slice(i));
+        if (!m) throw new Error('num');
+        i += m[0].length;
+        return pConst(qFromDecimal(m[0]));
+      }
+      const v = expr();
+      if (i !== s.length) throw new Error('rest');
+      return v;
+    }
+
+    function evalNumeric(src) {
+      try { const p = parsePoly(src); return p.a.n === 0n ? p.b : null; } catch (e) { return null; }
+    }
+    function solveLinear(src) {
+      const parts = normMath(src).split('=');
+      if (parts.length !== 2) return null;
+      try {
+        const d = pSub(parsePoly(parts[0]), parsePoly(parts[1]));
+        if (d.a.n === 0n) return null;
+        return qDiv(qSub(qZero(), d.b), d.a);
+      } catch (e) { return null; }
+    }
+
+    // 設問の行から、番号・配点・定型の指示語を取り除いた「式」を取り出す
+    function stripQuestionPrefix(raw) {
+      return normMath(raw)
+        .replace(/^\s*(?:問|設問)?\s*\(?\s*\d+\s*[).．]?\s*/, '')
+        .replace(/\(\s*(?:各)?\d+\s*点\s*\)/g, '')
+        .trim();
+    }
+    function calcBody(raw) {
+      let t = stripQuestionPrefix(raw)
+        .replace(/^(?:次の)?(?:計算|式|方程式)を?(?:しなさい|解きなさい|求めなさい|せよ|解け)?[。:：、\s]*/, '')
+        .replace(/[=]\s*$/, '')
+        .replace(/[?？]\s*$/, '')
+        .trim();
+      if (!t) return null;
+      if (/^[\d.()+\-*\/^\s]+$/.test(t) && /[+\-*\/^]/.test(t.replace(/^-/, '')) && (t.match(/\d+(?:\.\d+)?/g) || []).length >= 2) return { kind: 'calc', expr: t };
+      if (/^[\dx.()+\-*\/^=\s]+$/.test(t) && (t.match(/=/g) || []).length === 1 && /x/.test(t)) return { kind: 'eq', expr: t };
+      return null;
+    }
+    // 模範解答の行から数値を取り出す（整数・小数・分数・帯分数・「〇分の〇」）
+    function calcAnswer(raw) {
+      let t = stripQuestionPrefix(raw);
+      if (t.includes('=')) t = t.slice(t.lastIndexOf('=') + 1);
+      t = t.replace(/^\s*x\s*/, '').trim();
+      let m;
+      if ((m = /^(-?\d+)\s+(\d+)\s*\/\s*(\d+)/.exec(t))) { const w = BigInt(m[1]); const f = Qn(BigInt(m[2]), BigInt(m[3])); return m[1].startsWith('-') ? qSub(Qn(w), f) : qAdd(Qn(w), f); }
+      if ((m = /^(-?\d+)\s*\/\s*(\d+)/.exec(t))) return Qn(BigInt(m[1]), BigInt(m[2]));
+      if ((m = /^(\d+)\s*分の\s*(\d+)/.exec(t))) return Qn(BigInt(m[2]), BigInt(m[1]));
+      if ((m = /^-?\d+(?:\.\d+)?/.exec(t))) { const neg = m[0].startsWith('-'); const q = qFromDecimal(m[0].replace('-', '')); return neg ? qSub(qZero(), q) : q; }
+      return null;
+    }
+
+    // ① 計算問題の検算：式を解いて模範解答と照合する
+    function verifyCalculations(qItems, keyItems) {
+      const issues = [];
+      qItems.forEach(q => {
+        const body = calcBody(q.raw);
+        if (!body) return;
+        const k = keyItems.find(x => x.key === q.key);
+        if (!k) return;
+        const ans = calcAnswer(k.raw);
+        if (!ans) return;
+        const v = body.kind === 'calc' ? evalNumeric(body.expr) : solveLinear(body.expr);
+        if (!v) return;
+        if (!qEq(v, ans)) {
+          issues.push({
+            level: 'error', category: '模範解答の検算',
+            detail: `「${q.key}」を${body.kind === 'calc' ? '計算すると' : '解くと'} ${qFmt(v)} になりますが、模範解答は ${qFmt(ans)} です。（式：${body.expr.replace(/\*/g, '×').replace(/\//g, '÷')}）`
+          });
+        }
+      });
+      return issues;
+    }
+
+    // ② 正答の偏り
+    function checkAnswerBias(keyItems) {
+      const syms = [];
+      keyItems.forEach(k => {
+        const m = /^([ア-オA-Ea-e])(?:[\s。.、]|$)/.exec(stripQuestionPrefix(k.raw));
+        if (m) syms.push(m[1]);
+      });
+      const issues = [];
+      if (syms.length < 5) return issues;
+      const cnt = {};
+      syms.forEach(s => { cnt[s] = (cnt[s] || 0) + 1; });
+      const [top, n] = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0];
+      if (n / syms.length >= 0.6) {
+        issues.push({ level: 'warn', category: '正答の偏り', detail: `記号で答える${syms.length}問のうち${n}問の正答が「${top}」です。意図した配置か確認してください。`, score: 1 });
+      }
+      let run = 1, maxRun = 1, runSym = syms[0];
+      for (let i = 1; i < syms.length; i++) {
+        run = syms[i] === syms[i - 1] ? run + 1 : 1;
+        if (run > maxRun) { maxRun = run; runSym = syms[i]; }
+      }
+      if (maxRun >= 4) {
+        issues.push({ level: 'warn', category: '正答の偏り', detail: `正答が「${runSym}」で${maxRun}問連続しています。意図した配置か確認してください。`, score: 1 });
+      }
+      return issues;
+    }
+
+    // ③ 文書内の「ゆれ」検出（問題用紙・解答用紙・模範解答の語を横断して比べる）
+    const CONTRAST_SETS = ['一二三四五六七八九十百千万', '東西南北', '上下左右前後', '大中小', '男女', '春夏秋冬', '長正', '内外', '父母兄弟姉妹',
+      '有無', '増減', '開閉', '強弱', '高低', '遠近', '新旧', '表裏', '昼夜', '陸海', '入出', '加減乗除', '鋭鈍', '正負', '奇偶', '縦横',
+      '甲乙丙丁', '昭平令', '金銀銅', '熱冷温寒', '軽重', '公私', '官民', '朝夕', '勝敗', '善悪', '因果', '自他', '単複', '日月火水木金土', '酸塩'];
+    const sameContrast = (a, b) => CONTRAST_SETS.some(s => s.includes(a) && s.includes(b));
+
+    function oneCharApart(a, b) {
+      if (a.length !== b.length || a === b) return false;
+      const diff = [];
+      for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) diff.push(i);
+      if (diff.length === 1) return !sameContrast(a[diff[0]], b[diff[0]]);
+      if (diff.length === 2 && diff[1] === diff[0] + 1 && a[diff[0]] === b[diff[1]] && a[diff[1]] === b[diff[0]]) return true;
+      return false;
+    }
+
+    // sources: [{ group: 'Q'|'A'|'K', text, label }]
+    function findTermVariants(sources) {
+      const occ = new Map();
+      sources.forEach((src, si) => {
+        src.text.split(/\r?\n/).forEach((line, li) => {
+          const re = /[一-龥々]{3,10}|[ァ-ヶー]{3,12}/g;
+          let m;
+          while ((m = re.exec(line))) {
+            if (!occ.has(m[0])) occ.set(m[0], []);
+            occ.get(m[0]).push({ si, li, idx: m.index, group: src.group });
+          }
+        });
+      });
+      const byLen = new Map();
+      occ.forEach((_, t) => { if (!byLen.has(t.length)) byLen.set(t.length, []); byLen.get(t.length).push(t); });
+      const out = [];
+      occ.forEach((rs, r) => {
+        if (rs.length !== 1) return;
+        const rOcc = rs[0];
+        let best = null;
+        (byLen.get(r.length) || []).forEach(c => {
+          if (c === r || !oneCharApart(r, c)) return;
+          const cs = occ.get(c);
+          const cross = rOcc.group !== 'Q' && cs.every(o => o.group === 'Q');
+          if (!(cs.length >= 2 || cross)) return;
+          if (cs.some(o => o.si === rOcc.si && o.li === rOcc.li)) return; // 同じ行に両方ある＝意図した対比
+          if (!best || cs.length > best.n) best = { c, n: cs.length, cross };
+        });
+        if (best) {
+          out.push({
+            sourceIndex: rOcc.si, lineIndex: rOcc.li, idx: rOcc.idx, wrong: r, fix: best.c,
+            nC: best.n, cross: best.cross, score: (best.cross || best.n >= 3) ? 2 : 1,
+            key: `文書内のゆれ|${r}|${best.c}`
+          });
+        }
+      });
+      return out;
+    }
+
+    // ④ 前回版との差分（行単位）
+    function diffVersions(prevText, curText) {
+      const norm = t => t.replace(/[\s　]+/g, '');
+      const prev = prevText.split(/\r?\n/).map((l, i) => ({ t: norm(l), raw: l.trim(), i })).filter(x => x.t);
+      const cur = curText.split(/\r?\n/).map((l, i) => ({ t: norm(l), raw: l.trim(), i })).filter(x => x.t);
+      const n = prev.length, m = cur.length;
+      const L = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
+      for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) {
+        L[i][j] = prev[i].t === cur[j].t ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+      }
+      const ops = [];
+      let i = 0, j = 0;
+      while (i < n && j < m) {
+        if (prev[i].t === cur[j].t) { i++; j++; }
+        else if (L[i + 1][j] >= L[i][j + 1]) ops.push({ type: 'del', p: prev[i++] });
+        else ops.push({ type: 'add', c: cur[j++] });
+      }
+      while (i < n) ops.push({ type: 'del', p: prev[i++] });
+      while (j < m) ops.push({ type: 'add', c: cur[j++] });
+      // 連続する削除と追加は「変更」として対応づける
+      const changes = [];
+      let k = 0;
+      while (k < ops.length) {
+        if (ops[k].type === 'del' || ops[k].type === 'add') {
+          const dels = [], adds = [];
+          while (k < ops.length && ops[k].type !== undefined && (ops[k].type === 'del' || ops[k].type === 'add')) {
+            (ops[k].type === 'del' ? dels : adds).push(ops[k]);
+            k++;
+          }
+          const pairs = Math.min(dels.length, adds.length);
+          for (let x = 0; x < pairs; x++) changes.push({ type: 'changed', prev: dels[x].p.raw, cur: adds[x].c.raw, lineIndex: adds[x].c.i });
+          for (let x = pairs; x < dels.length; x++) changes.push({ type: 'removed', prev: dels[x].p.raw });
+          for (let x = pairs; x < adds.length; x++) changes.push({ type: 'added', cur: adds[x].c.raw, lineIndex: adds[x].c.i });
+        } else k++;
+      }
+      return changes;
+    }
+
+    // ⑤ 学年別配当漢字（gradeMap: 漢字 → 学年(1〜6)。表にない漢字は中学以降として扱う）
+    function gradeIssues(text, gradeMap, grade) {
+      const out = [];
+      text.split(/\r?\n/).forEach((line, i) => {
+        const seen = new Set();
+        const hits = [];
+        for (const ch of line) {
+          if (!/[一-龥]/.test(ch) || seen.has(ch)) continue;
+          seen.add(ch);
+          const g = gradeMap[ch] || 7;
+          if (g > grade) hits.push({ ch, g });
+        }
+        if (hits.length) {
+          out.push({
+            level: 'warn', category: '学年配当漢字', lineIndex: i, score: 1,
+            detail: `${i + 1}行目：小学${grade}年向けのテストですが、上の学年で習う漢字が含まれています：` +
+              hits.slice(0, 8).map(h => `「${h.ch}」（${h.g === 7 ? '中学以降' : '小' + h.g}）`).join('') + (hits.length > 8 ? `ほか${hits.length - 8}字` : '')
+          });
+        }
+      });
+      return out;
+    }
+    // ===== SMART CHECKS END =====
+
     async function runCheck() {
       const rawQ = el.textQ.value.trim();
       const rawA = el.textA.value.trim();
@@ -2242,17 +2626,25 @@
             grammarFailed = true;
           }
         }
-        if (el.chkTypos.checked) {
-          const proofSources = [
+        const proofSources = [
             { label: '問題用紙', text: el.textQ.value, ta: 'textQ', offset: 0 },
             ...qBlocks.map(b => ({ label: `問題用紙・画像「${b.name}」`, text: b.lines.join('\n'), ta: 'ocrQ', offset: b.headerLine + 1 })),
             { label: '解答用紙', text: el.textA.value, ta: 'textA', offset: 0 },
             ...aBlocks.map(b => ({ label: `解答用紙・画像「${b.name}」`, text: b.lines.join('\n'), ta: 'ocrA', offset: b.headerLine + 1 }))
-          ];
+        ];
+        let ignoredCount = 0;
+        const gradeSel = parseInt(el.selectGrade.value, 10) || 0;
+        if (el.chkTypos.checked) {
           proofSources.forEach(sheet => {
             if (!sheet.text.trim()) return;
-            [...checkTyposAndKanji(sheet.text), ...(tokenizer ? checkGrammar(tokenizer, sheet.text) : [])].forEach(t => {
-              const issue = { level: t.level, category: `${t.category}（${sheet.label}）`, detail: t.detail };
+            const isQ = sheet.ta === 'textQ' || sheet.ta === 'ocrQ';
+            [...checkTyposAndKanji(sheet.text), ...(tokenizer ? checkGrammar(tokenizer, sheet.text) : []),
+             ...(isQ && state.gradeMap && gradeSel ? gradeIssues(sheet.text, state.gradeMap, gradeSel) : [])].forEach(t => {
+              const k0 = t.wrong ? `${t.category}|${t.wrong}` : null;
+              if (k0 && state.ignore.has(k0)) { ignoredCount++; return; }
+              const issue = { level: t.level, category: `${t.category}（${sheet.label}）`, detail: t.detail,
+                score: t.score != null ? t.score : (t.level === 'error' ? 3 : (t.tier === 'style' ? 1 : 2)) };
+              if (k0) issue.key = k0;
               if (t.lineIndex != null) {
                 const absLine = sheet.offset + t.lineIndex;
                 issue.src = { ta: sheet.ta, absLine };
@@ -2273,6 +2665,52 @@
             category: '文法チェック（未実施）',
             detail: '文法チェック用の辞書を読み込めなかったため、助詞の重複や長すぎる文などの確認は行っていません。ネットワーク接続を確認して、もう一度実行してください（チェックを外せばこの表示は出ません）。'
           });
+        }
+
+        // 1.5 文書内のゆれ（問題用紙・解答用紙・模範解答の語を横断して比べる）
+        const keyTextAll = [el.textKey.value, ...parseOcrBlocks(el.ocrK.value).map(b => b.lines.join('\n'))].join('\n');
+        if (el.chkTypos.checked) {
+          const varSources = [
+            ...proofSources.map(sh => ({ group: sh.ta.endsWith('Q') ? 'Q' : 'A', text: sh.text, sheet: sh })),
+            ...(keyTextAll.trim() ? [{ group: 'K', text: keyTextAll, sheet: null }] : [])
+          ];
+          const dictWrongs = new Set(issues.map(i => i.wrong).filter(Boolean));
+          findTermVariants(varSources).forEach(v => {
+            if (dictWrongs.has(v.wrong)) return; // 辞書で指摘済み
+            const sh = varSources[v.sourceIndex].sheet;
+            const lineText = varSources[v.sourceIndex].text.split(/\r?\n/)[v.lineIndex] || '';
+            const issue = {
+              level: 'warn', score: v.score, key: v.key, noBulk: true, wrong: v.wrong, fix: v.fix,
+              category: '文書内のゆれ' + (sh ? `（${sh.label}）` : '（模範解答）'),
+              detail: `${v.lineIndex + 1}行目：${makeExcerpt(lineText, v.idx, v.wrong.length)} → 「${v.fix}」と1文字違いです（${v.cross ? '問題用紙にある語と食い違っています' : `同じテストに「${v.fix}」が${v.nC}回出てきます`}）。誤字でなければ、「今後表示しない」を押してください。`
+            };
+            if (sh) {
+              const absLine = sh.offset + v.lineIndex;
+              issue.src = { ta: sh.ta, absLine };
+              state.marks[sh.ta].push({ line: absLine, wrong: v.wrong, level: 'warn' });
+            } else { issue.wrong = undefined; issue.fix = null; }
+            issues.push(issue);
+          });
+        }
+
+        // 1.6 前回版との差分
+        if (el.textPrev.value.trim()) {
+          const ch = diffVersions(el.textPrev.value, fullQ);
+          const cnt = { added: 0, removed: 0, changed: 0 };
+          ch.forEach(c => { cnt[c.type]++; });
+          issues.push({
+            level: 'warn', score: 0, category: '前回版からの変更（参考）',
+            detail: ch.length ? `前回版と比べて、変更${cnt.changed}行・追加${cnt.added}行・削除${cnt.removed}行です。` : '前回版との違いはありませんでした。'
+          });
+          ch.slice(0, 40).forEach(c => {
+            const clip = t => (t.length > 60 ? t.slice(0, 60) + '…' : t);
+            issues.push({
+              level: 'warn', score: 0, category: '前回版からの変更（参考）',
+              detail: c.type === 'changed' ? `変更：「${clip(c.prev)}」→「${clip(c.cur)}」`
+                : c.type === 'added' ? `追加：「${clip(c.cur)}」` : `削除：「${clip(c.prev)}」`
+            });
+          });
+          if (ch.length > 40) issues.push({ level: 'warn', score: 0, category: '前回版からの変更（参考）', detail: `ほか${ch.length - 40}件の変更があります。` });
         }
 
         // 2. 設問パースと大問ごとのスマート連番・重複・図表参照チェック
@@ -2412,6 +2850,7 @@
         if (el.chkConsistency.checked && keyText.trim()) {
           const keyNorm = normalizeKeyText(keyText).replace(/(問\s*[0-9０-９]+)\s*[:：=＝]\s*/g, '$1 ');
           const keyItems = parseQuestionsFromText(keyNorm);
+          issues.push(...verifyCalculations(qItems, keyItems), ...checkAnswerBias(keyItems));
           const noKey = qItems.filter(q => !keyItems.some(k => k.key === q.key));
           if (noKey.length) {
             issues.push({
@@ -2491,12 +2930,22 @@
           });
         }
 
+        issues.forEach(it => { if (it.score == null) it.score = it.level === 'error' ? 3 : 2; });
+        {
+          const kept = issues.filter(it => { const k = issueKey(it); if (k && state.ignore.has(k)) { ignoredCount++; return false; } return true; });
+          issues.length = 0;
+          issues.push(...kept);
+          issues.sort((a, b) => b.score - a.score);
+        }
+        el.ignoreNote.classList.toggle('hidden', state.ignore.size === 0);
+        el.ignoreNote.innerHTML = state.ignore.size
+          ? `「今後表示しない」にした指摘が${state.ignore.size}件あります（今回は${ignoredCount}件を非表示）。<button type="button" id="btn-ignore-reset" class="underline text-indigo-600 ml-1">リセット</button>` : '';
         state.latestIssues = issues;
         state.currentFilter = 'all';
         updateFilterButtons();
         renderResults(issues, compRows);
         renderSectionTotals(qItems, aItems);
-        const fixable = issues.filter(i => i.fix && i.wrong && i.src);
+        const fixable = issues.filter(i => i.fix && i.wrong && i.src && !i.noBulk);
         el.btnApplyAll.textContent = `修正案をすべて適用（${fixable.length}件）`;
         el.btnApplyAll.classList.toggle('hidden', fixable.length === 0);
         refreshAllHighlights();
@@ -2580,23 +3029,30 @@
           </div>
         `;
       } else {
-        el.issuesList.innerHTML = filtered.map(issue => {
+        const card = issue => {
           const isErr = issue.level === 'error';
           const idx = issues.indexOf(issue);
           const canApply = !!(issue.fix && issue.wrong && issue.src);
+          const conf = issue.score >= 3 ? ['高', 'bg-rose-100 text-rose-800'] : issue.score === 2 ? ['中', 'bg-amber-100 text-amber-800'] : ['低', 'bg-slate-200 text-slate-600'];
+          const canIgnore = !!issueKey(issue);
           return `
             <div class="p-4 rounded-xl border ${isErr ? 'bg-rose-50 border-rose-200' : 'bg-amber-50 border-amber-200'} flex items-start gap-3">
               <span class="px-2.5 py-0.5 rounded-md text-xs font-bold shrink-0 mt-0.5 ${isErr ? 'bg-rose-600 text-white' : 'bg-amber-500 text-white'}">
                 ${isErr ? '要修正' : '確認推奨'}
               </span>
               <div class="space-y-1 flex-1 min-w-0">
-                <div class="text-xs font-bold ${isErr ? 'text-rose-900' : 'text-amber-900'}">${escapeHtml(issue.category)}</div>
+                <div class="text-xs font-bold ${isErr ? 'text-rose-900' : 'text-amber-900'}">${escapeHtml(issue.category)}<span class="ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium ${conf[1]}">確度 ${conf[0]}</span></div>
                 <p class="text-sm ${isErr ? 'text-rose-800' : 'text-amber-800'}">${escapeHtml(issue.detail)}</p>
+                ${canIgnore ? `<button type="button" data-ignore="${idx}" class="no-print text-[11px] text-slate-500 underline hover:text-slate-700">今後表示しない</button>` : ''}
               </div>
               ${canApply ? `<button type="button" data-apply="${idx}" class="no-print shrink-0 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg transition">修正を適用</button>` : ''}
             </div>
           `;
-        }).join('');
+        };
+        const mainList = filtered.filter(i => i.score >= 2);
+        const lowList = filtered.filter(i => i.score < 2);
+        el.issuesList.innerHTML = mainList.map(card).join('') +
+          (lowList.length ? `<details class="rounded-xl border border-slate-200 bg-white px-4 py-3"><summary class="text-sm font-medium text-slate-700 cursor-pointer select-none">確度が低い指摘（${lowList.length}件）― 表記ゆれの提案や参考情報です</summary><div class="mt-3 space-y-3">${lowList.map(card).join('')}</div></details>` : '');
       }
     }
 

@@ -2502,77 +2502,125 @@
     let tokenizerPromise = null;
     // 辞書ファイルごとのおおよその重み（進捗%の目安用。実サイズに近い比率）
     const DICT_WEIGHTS = { 'base.dat.gz': 3.7, 'check.dat.gz': 3.0, 'tid.dat.gz': 1.5, 'tid_pos.dat.gz': 5.6, 'tid_map.dat.gz': 1.5, 'cc.dat.gz': 1.7, 'unk.dat.gz': 0.05, 'unk_pos.dat.gz': 0.01, 'unk_map.dat.gz': 0.01, 'unk_char.dat.gz': 0.01, 'unk_compat.dat.gz': 0.01, 'unk_invoke.dat.gz': 0.01 };
-    // 1つ目は自分のサイト内（kuromoji/ フォルダを置いた場合のみ有効）。なければ外部の配信元を順に試す
+    // 配信元の候補。1つ目は自分のサイト内（kuromoji/ フォルダを置いた場合のみ有効）
     const KUROMOJI_BASES = ['kuromoji/', 'https://cdn.jsdelivr.net/npm/kuromoji@0.1.2/', 'https://unpkg.com/kuromoji@0.1.2/'];
-    const STALL_MS = 30000;       // ダウンロードが進まない場合に別の配信元へ切り替えるまでの時間
+    const FILE_STALL_MS = 25000;  // 1ファイルのダウンロードが無反応のまま経過したら、やり直すまでの時間
+    const FILE_TRIES = 8;         // 1ファイルあたりの最大試行回数（配信元を交互に切り替える）
+    const SCRIPT_STALL_MS = 20000;
     const BUILD_MS = 240000;      // ダウンロード後の辞書の組み立て（端末によっては数十秒〜数分）を待つ時間
     let tokenizerError = '';
-    function loadScriptOnce(src) {
+    function loadScriptOnce(src, ms) {
       return new Promise((resolve, reject) => {
         const sc = document.createElement('script');
-        sc.src = src; sc.onload = resolve;
-        sc.onerror = () => { sc.remove(); reject(new Error('部品（' + src.split('/')[2] + '）を取得できませんでした')); };
+        const t = setTimeout(() => { sc.remove(); reject(new Error('応答がありませんでした')); }, ms);
+        sc.src = src;
+        sc.onload = () => { clearTimeout(t); resolve(); };
+        sc.onerror = () => { clearTimeout(t); sc.remove(); reject(new Error('部品を取得できませんでした')); };
         document.head.appendChild(sc);
       });
     }
-    function buildTokenizer(base, onProgress) {
+    // 1つのURLを、受信が止まったら中断できる形で取得する（進み具合も通知）
+    async function fetchWithStall(url, onChunk) {
+      const ctl = new AbortController();
+      let timer = setTimeout(() => ctl.abort(), FILE_STALL_MS);
+      try {
+        const res = await fetch(url, { signal: ctl.signal, cache: 'force-cache' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const total = parseInt(res.headers.get('content-length') || '0', 10);
+        if (!res.body || !res.body.getReader) { const b = await res.arrayBuffer(); onChunk(b.byteLength, b.byteLength); return b; }
+        const reader = res.body.getReader();
+        const chunks = []; let got = 0;
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          chunks.push(value); got += value.length;
+          clearTimeout(timer); timer = setTimeout(() => ctl.abort(), FILE_STALL_MS);
+          onChunk(got, total);
+        }
+        const out = new Uint8Array(got); let o = 0;
+        chunks.forEach(c => { out.set(c, o); o += c.length; });
+        return out.buffer;
+      } finally { clearTimeout(timer); }
+    }
+    function buildTokenizer(sources, onProgress) {
       const files = {};   // ファイル名 -> 0〜1
       const totalW = Object.values(DICT_WEIGHTS).reduce((a, b) => a + b, 0);
-      const report = () => {
+      const report = (note) => {
         if (!onProgress) return;
         let sum = 0;
         for (const [n, f] of Object.entries(files)) sum += (DICT_WEIGHTS[n] || 0.01) * f;
         const allDone = Object.keys(DICT_WEIGHTS).every(n => files[n] === 1);
-        onProgress(allDone ? 99 : Math.min(98, Math.floor(100 * sum / totalW)), allDone ? 'build' : 'download');
+        onProgress(allDone ? 99 : Math.min(98, Math.floor(100 * sum / totalW)), allDone ? 'build' : 'download', note);
       };
-      // 辞書の読み込み中だけ XMLHttpRequest を見張って進み具合を集計する（kuromoji側がURLの "//" を "/" に直すことがあるため、ファイル名で判定）
-      const origOpen = XMLHttpRequest.prototype.open;
+      // kuromoji が辞書を取りに行く通信（XMLHttpRequest）を横取りし、再試行つきの取得に置き換える
+      const origOpen = XMLHttpRequest.prototype.open, origSend = XMLHttpRequest.prototype.send;
       XMLHttpRequest.prototype.open = function (method, url) {
-        try {
-          const m = /\/dict\/([A-Za-z_]+\.dat\.gz)$/.exec(String(url));
-          if (m) {
-            const name = m[1];
-            files[name] = 0;
-            this.addEventListener('progress', ev => {
-              files[name] = (ev.lengthComputable && ev.total) ? ev.loaded / ev.total : Math.max(files[name], 0.5);
-              report();
-            });
-            this.addEventListener('load', () => { files[name] = 1; report(); });
-          }
-        } catch (e) { /* 進捗表示だけの処理なので無視 */ }
+        const m = /\/dict\/([A-Za-z_]+\.dat\.gz)$/.exec(String(url));
+        if (m) { this.__dictName = m[1]; files[m[1]] = 0; }
         return origOpen.apply(this, arguments);
       };
+      XMLHttpRequest.prototype.send = function () {
+        const name = this.__dictName;
+        if (!name) return origSend.apply(this, arguments);
+        const xhr = this;
+        (async () => {
+          let lastErr = null;
+          for (let k = 0; k < FILE_TRIES; k++) {
+            const src = sources[k % sources.length];
+            try {
+              const buf = await fetchWithStall(src + 'dict/' + name, (got, total) => {
+                files[name] = total ? Math.min(0.99, got / total) : 0.5;
+                report(k > 0 ? `（再試行 ${k}回目）` : '');
+              });
+              files[name] = 1;
+              Object.defineProperty(xhr, 'status', { value: 200, configurable: true });
+              Object.defineProperty(xhr, 'response', { value: buf, configurable: true });
+              report('');
+              if (xhr.onload) xhr.onload.call(xhr, {});
+              return;
+            } catch (e) {
+              lastErr = e; files[name] = 0;
+              console.error('辞書取得に失敗', name, src, e);
+              report(`（${name} を再試行しています）`);
+              await new Promise(r => setTimeout(r, Math.min(4000, 500 * Math.pow(2, k))));
+            }
+          }
+          tokenizerError = `${name}：${lastErr && lastErr.message ? lastErr.message : '取得できませんでした'}（${FILE_TRIES}回試しました）`;
+          if (xhr.onerror) xhr.onerror(new Error(tokenizerError));
+        })();
+      };
+      const restore = () => { XMLHttpRequest.prototype.open = origOpen; XMLHttpRequest.prototype.send = origSend; };
       return new Promise((resolve, reject) => {
-        window.kuromoji.builder({ dicPath: base + 'dict/' }).build((err, tk) => err ? reject(err) : resolve(tk));
-      }).finally(() => { XMLHttpRequest.prototype.open = origOpen; });
+        const t = setTimeout(() => reject(new Error('辞書の組み立てが終わりませんでした（端末のメモリ不足の可能性があります）')), BUILD_MS + FILE_STALL_MS * FILE_TRIES);
+        window.kuromoji.builder({ dicPath: sources[0] + 'dict/' }).build((err, tk) => { clearTimeout(t); err ? reject(err) : resolve(tk); });
+      }).finally(restore);
     }
     function loadTokenizer(onProgress) {
       if (tokenizerPromise) { if (onProgress) onProgress(100, 'ready'); return tokenizerPromise; }
       tokenizerPromise = (async () => {
         const errs = [];
+        // 1) 辞書を扱う部品（kuromoji.js）を、取得できた配信元から読み込む
+        let scriptBase = null;
+        if (window.kuromoji) scriptBase = KUROMOJI_BASES[1];
         for (const base of KUROMOJI_BASES) {
+          if (scriptBase) break;
           const label = base.startsWith('http') ? base.split('/')[2] : 'このサイト内';
-          let timer = null, rejectStall;
-          const stalled = new Promise((_, rej) => { rejectStall = rej; });
-          const arm = (ms) => { clearTimeout(timer); timer = setTimeout(() => rejectStall(new Error(ms === BUILD_MS ? '辞書の組み立てが終わりませんでした（端末のメモリ不足の可能性があります）' : `${STALL_MS / 1000}秒間進みませんでした（接続が制限されている可能性があります）`)), ms || STALL_MS); };
-          const prog = (pct, phase) => { arm(phase === 'build' ? BUILD_MS : STALL_MS); if (onProgress) onProgress(pct, phase); };
-          try {
-            arm();
-            if (onProgress) onProgress(0, 'connect', label);
-            if (!window.kuromoji) await Promise.race([loadScriptOnce(base + 'build/kuromoji.js'), stalled]);
-            const tk = await Promise.race([buildTokenizer(base, prog), stalled]);
-            clearTimeout(timer);
-            if (onProgress) onProgress(100, 'ready');
-            return tk;
-          } catch (e) {
-            clearTimeout(timer);
-            console.error(e);
-            if (base.startsWith('http')) errs.push(label + '：' + (e && e.message ? e.message : (e && e.type) || String(e)));
-            if (onProgress) onProgress(0, 'retry');
-          }
+          if (onProgress) onProgress(0, 'connect', label);
+          try { await loadScriptOnce(base + 'build/kuromoji.js', SCRIPT_STALL_MS); scriptBase = base; }
+          catch (e) { if (base.startsWith('http')) errs.push(label + '：' + e.message); }
         }
-        tokenizerError = errs.join(' / ');
-        throw new Error(tokenizerError);
+        if (!scriptBase) { tokenizerError = errs.join(' / '); throw new Error(tokenizerError); }
+        // 2) 辞書ファイル（12個）は、部品と同じ配信元から取り、失敗したら他の配信元に切り替えて再試行する
+        const sources = [scriptBase, ...KUROMOJI_BASES.filter(b => b !== scriptBase && b.startsWith('http'))];
+        try {
+          const tk = await buildTokenizer(sources, onProgress);
+          if (onProgress) onProgress(100, 'ready');
+          return tk;
+        } catch (e) {
+          console.error(e);
+          if (!tokenizerError) tokenizerError = e && e.message ? e.message : String(e);
+          throw e;
+        }
       })().catch(err => { tokenizerPromise = null; throw err; });
       return tokenizerPromise;
     }
@@ -3028,14 +3076,14 @@
         let grammarFailed = false;
         if (el.chkGrammar.checked && el.chkTypos.checked) {
           try {
-            const dictMsg = (pct, phase, src) => {
+            const dictMsg = (pct, phase, src) => {   // src: 'connect'のとき配信元名、'download'のとき補足メッセージ
               el.progressBar.style.width = pct + '%';
               el.progressText.textContent = phase === 'ready'
                 ? '文法チェック用の辞書の準備ができました（100%）'
                 : phase === 'retry' ? '辞書の取得に失敗したため、別の配信元で再試行しています...'
                 : phase === 'build' ? '辞書をダウンロードしました。端末で組み立てています（数十秒かかることがあります。画面を閉じずにお待ちください）...'
                 : phase === 'connect' ? `辞書の配信元に接続しています（${src}）...`
-                : `文法チェック用の辞書を読み込み中です：${pct}%（初回のみ・約17MB。入力した文章は送信されません）`;
+                : `文法チェック用の辞書を読み込み中です：${pct}%${src ? ' ' + src : ''}（初回のみ・約17MB。入力した文章は送信されません）`;
             };
             dictMsg(0, 'download');
             tokenizer = await loadTokenizer(dictMsg);

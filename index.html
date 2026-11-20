@@ -2905,10 +2905,11 @@
       const mention = text.match(/[次下上右左]の(図|グラフ|写真|地図|資料)|(図|グラフ|写真|地図)(から|より|を見て|を参考|にもとづ|に基づ|を使っ)/);
       if (mention && !(o.nImages > 0)) out.push({ level: 'warn', category: '図・グラフの画像が未取り込み', detail: `「${mention[0]}」のように図やグラフに触れていますが、画像が取り込まれていません。図の位置や内容も確認したい場合は、問題用紙に画像またはPDFを追加してください。`, score: 1 });
       // 画像から文字がほとんど読み取れない（図・写真だけの可能性）
-      (o.blocks || []).forEach(b => {
-        const n = b.lines.join('').replace(/\s/g, '').length;
-        if (n < 8) out.push({ level: 'warn', category: '画像から文字を読み取れません', detail: `画像「${b.name}」から文字がほとんど読み取れませんでした（図・グラフ・写真のみの画像か、文字が小さい・薄い可能性があります）。図の中の数値・軸の名前・単位などは目視で確認してください。`, score: 1 });
-      });
+      const blank = (o.blocks || []).filter(b => b.lines.join('').replace(/\s/g, '').length < 8);
+      if (blank.length) {
+        const names = blank.map(b => '「' + b.name.replace(/^.*ページの/, '').replace(/^(.{0,24}).*$/, '$1') + '」').join('、');
+        out.push({ level: 'warn', category: '画像から文字を読み取れません', detail: `画像 ${blank.length}点（${names}）から文字がほとんど読み取れませんでした。図・グラフ・写真のみの画像か、文字が小さい・薄い可能性があります。図の中の数値・軸の名前・単位などは目視で確認してください。`, score: 1 });
+      }
       // グラフの単位・軸の確認
       const graphMention = /グラフ|折れ線|棒グラフ|円グラフ|縦軸|横軸/.test(text);
       const imgBlocks = (o.blocks || []).filter(b => !/\d+ページ$/.test(b.name || ''));   // ページ全体の文字は除く（図の中の文字だけを見る）

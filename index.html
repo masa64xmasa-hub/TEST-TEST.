@@ -2764,6 +2764,53 @@
       });
       return out;
     }
+
+    // ---------- 図・グラフ・表・写真まわりの指摘（問題用紙） ----------
+    // 画像の「意味」までは読み取れないため、文字として確認できる範囲（番号・言及・単位・読み取り量）を点検する
+    function figureIssues(o) {
+      const out = [];
+      const z2h = t => t.replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+      const text = z2h(o.text || '');
+      const lines = text.split(/\r?\n/);
+      const kinds = ['図', 'グラフ', '表', '資料', '写真'];
+      kinds.forEach(k => {
+        // キャプション行：行頭が「図1」「【図1】」「(図1)」「図1　〜」
+        const capRe = new RegExp('^\\s*[【\\[（(〈<「]?\\s*' + k + '\\s*([0-9]{1,2})\\s*[】\\]）)〉>」]?(?![0-9をはがのにでともやへ]|から|より)');
+        const caps = [];
+        lines.forEach((ln, i) => { const m = capRe.exec(ln); if (m) caps.push({ n: parseInt(m[1], 10), line: i }); });
+        const nums = [...new Set(caps.map(c => c.n))].sort((a, b) => a - b);
+        const dup = nums.filter(n => caps.filter(c => c.n === n).length > 1);
+        dup.forEach(n => out.push({ level: 'warn', category: `${k}番号の重複`, detail: `「${k}${n}」が行頭に複数回あります。別の${k}に同じ番号が付いていないか確認してください。`, score: 2 }));
+        if (nums.length >= 2) {
+          const miss = [];
+          for (let n = nums[0]; n <= nums[nums.length - 1]; n++) if (!nums.includes(n)) miss.push(n);
+          if (miss.length) out.push({ level: 'warn', category: `${k}番号の飛び`, detail: `${k}${nums.join('・')} はあるのに ${miss.map(n => k + n).join('・')} が見当たりません。番号の付け間違い、または${k}の抜けがないか確認してください。`, score: 2 });
+        }
+        // 文中での参照が、キャプションとして存在するか（キャプションが1つも無い場合は判定しない）
+        if (nums.length) {
+          const refRe = new RegExp(k + '\\s*([0-9]{1,2})(?![0-9])', 'g');
+          const refs = new Set();
+          lines.forEach((ln, i) => { if (caps.some(c => c.line === i)) return; let m; while ((m = refRe.exec(ln))) refs.add(parseInt(m[1], 10)); });
+          const lost = [...refs].filter(n => !nums.includes(n));
+          if (lost.length) out.push({ level: 'warn', category: `${k}の参照先が不明`, detail: `本文で ${lost.map(n => k + n).join('・')} に触れていますが、その${k}の見出し（行頭の「${k}${lost[0]}」など）が見つかりません。${k}の貼り忘れや番号違いがないか確認してください。`, score: 2 });
+        }
+      });
+      // 「次の図」などの言及があるのに画像が取り込まれていない
+      const mention = text.match(/[次下上右左]の(図|グラフ|写真|地図|資料)|(図|グラフ|写真|地図)(から|より|を見て|を参考|にもとづ|に基づ|を使っ)/);
+      if (mention && !(o.nImages > 0)) out.push({ level: 'warn', category: '図・グラフの画像が未取り込み', detail: `「${mention[0]}」のように図やグラフに触れていますが、画像が取り込まれていません。図の位置や内容も確認したい場合は、問題用紙に画像またはPDFを追加してください。`, score: 1 });
+      // 画像から文字がほとんど読み取れない（図・写真だけの可能性）
+      (o.blocks || []).forEach(b => {
+        const n = b.lines.join('').replace(/\s/g, '').length;
+        if (n < 8) out.push({ level: 'warn', category: '画像から文字を読み取れません', detail: `画像「${b.name}」から文字がほとんど読み取れませんでした（図・グラフ・写真のみの画像か、文字が小さい・薄い可能性があります）。図の中の数値・軸の名前・単位などは目視で確認してください。`, score: 1 });
+      });
+      // グラフの単位・軸の確認
+      const graphMention = /グラフ|折れ線|棒グラフ|円グラフ|縦軸|横軸/.test(text);
+      const ocrText = z2h((o.blocks || []).map(b => b.lines.join('\n')).join('\n'));
+      const hasUnit = /[\(（\[〔［][^\)）\]〕］\s]{1,8}[\)）\]〕］]|単位|縦軸|横軸/.test(ocrText);
+      if (graphMention && (o.blocks || []).some(b => b.lines.join('').replace(/\s/g, '').length >= 8) && !hasUnit)
+        out.push({ level: 'warn', category: 'グラフの単位・軸が見当たりません', detail: 'グラフに触れていますが、画像内から単位（（cm）・〔g〕など）や縦軸・横軸の名前が読み取れませんでした。グラフに軸の名前と単位が入っているか確認してください（文字が小さくて読み取れていない場合もあります）。', score: 1 });
+      return out;
+    }
     // ===== SMART CHECKS END =====
 
     async function runCheck() {
@@ -2857,6 +2904,11 @@
             category: '文法チェック（未実施）',
             detail: '文法チェック用の辞書を読み込めなかったため、助詞の重複や長すぎる文などの確認は行っていません。ネットワーク接続を確認して、もう一度実行してください（チェックを外せばこの表示は出ません）。' + (tokenizerError ? '（原因：' + tokenizerError + '）' : '')
           });
+        }
+
+        // 1.4 図・グラフ・写真まわり（問題用紙）
+        if (el.chkTypos.checked) {
+          figureIssues({ text: fullQ, nImages: state.questionImages.length, blocks: qBlocks }).forEach(f => issues.push(f));
         }
 
         // 1.5 文書内のゆれ（問題用紙・解答用紙・模範解答の語を横断して比べる）

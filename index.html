@@ -1719,7 +1719,13 @@
     }
     function parseQuestionsFromText(rawText) {
       const normalized = normalizeOcrText(rawText);
-      const lines = normalized.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      // 解答欄が1行に横並びのとき（問1（3点） 問2（3点） …）は、1つずつの行に分ける
+      const lines = normalized.split(/\r?\n/).flatMap(l => {
+        const t = l.trim();
+        const marks = t.match(/問\s*[0-9０-９]+\s*[（(]\s*[0-9０-９]+\s*点\s*[）)]/g) || [];
+        if (marks.length < 2) return [t];
+        return t.split(/(?=問\s*[0-9０-９]+\s*[（(]\s*[0-9０-９]+\s*点\s*[）)])/).map(x => x.trim());
+      }).filter(Boolean);
       const items = [];
       let currentSectionNum = 1;
       let currentSection = '大問1';
@@ -1782,6 +1788,12 @@
             if (/^(?:【|\[)?\s*(?:大問|第)\s*[0-9一二三四五六七八九十]+/.test(nextL)) break;
             if (/^(?:問|設問|\()\s*[0-9]+\s*(?:\)|\.|．|\s|\[|【|（|\(|：|:|$)/.test(nextL)) break;
             lookaheadBlock += ' ' + nextL;
+          }
+
+          // 配点が次の行（折り返し）に書かれている場合も拾う
+          if (!ptMatch || line.includes('各')) {
+            const pm = lookaheadBlock.match(/[（(]\s*(?:配点\s*)?([0-9０-９]+)\s*点\s*[）)]/);
+            if (pm && !/各\s*[0-9０-９]+\s*点/.test(pm[0])) points = parseInt(pm[1].replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)), 10);
           }
 
           const choices = detectChoices(lookaheadBlock);
@@ -2323,8 +2335,9 @@
           // 区切り記号・括弧・配点を除いた中身で比べる（解答欄の「[ ア ・ イ ]」のような並びは対象外）
           const key = o.text
             .replace(/[（(]\s*(?:各)?[0-9０-９]+\s*点\s*[）)]/g, '')
-            .replace(/[\s　・、,，.．/／|｜\[\]［］()（）]+/g, '');
-          if (!key) return;
+            .replace(/[\s　・、,，.．|｜\[\]［］()（）]+/g, '');
+          // 解答欄の「ア/イ」のような記号だけの並びは対象外（式の「2/x」は比べる）
+          if (!key || /^[ア-オ/／]*$/.test(key)) return;
           if (seen.has(key)) {
             issues.push({
               level: 'warn', category: CAT.DUP,
@@ -2772,17 +2785,17 @@
         return v;
       }
       function term() {
-        let v = power();
+        let v = unary();
         for (;;) {
           const c = peek();
-          if (c === '*' || c === '/') { i++; const r = power(); v = c === '*' ? pMul(v, r) : pDiv(v, r); }
+          if (c === '*' || c === '/') { i++; const r = unary(); v = c === '*' ? pMul(v, r) : pDiv(v, r); }
           else if (c === 'x' || c === '(') { v = pMul(v, power()); }
           else break;
         }
         return v;
       }
       function power() {
-        let b = unary();
+        let b = primary();
         if (peek() === '^') {
           i++;
           let sign = 1;
@@ -2795,9 +2808,10 @@
         return b;
       }
       function unary() {
+        // 「−3²」は −(3²)。先に符号を外してから累乗を計算する
         if (peek() === '-') { i++; const v = unary(); return pSub(pConst(qZero()), v); }
         if (peek() === '+') { i++; return unary(); }
-        return primary();
+        return power();
       }
       function primary() {
         const c = peek();
@@ -2836,12 +2850,14 @@
     function calcBody(raw) {
       let t = stripQuestionPrefix(raw)
         .replace(/^(?:次の)?(?:計算|式|方程式)を?(?:しなさい|解きなさい|求めなさい|せよ|解け)?[。:：、\s]*/, '')
+        .replace(/\s*(?:を|について)?\s*(?:解きなさい|計算しなさい|簡単にしなさい|求めなさい|計算せよ|解け|しなさい)[。.]*\s*$/, '')
         .replace(/[=]\s*$/, '')
         .replace(/[?？]\s*$/, '')
         .trim();
       if (!t) return null;
       if (/^[\d.()+\-*\/^\s]+$/.test(t) && /[+\-*\/^]/.test(t.replace(/^-/, '')) && (t.match(/\d+(?:\.\d+)?/g) || []).length >= 2) return { kind: 'calc', expr: t };
       if (/^[\dx.()+\-*\/^=\s]+$/.test(t) && (t.match(/=/g) || []).length === 1 && /x/.test(t)) return { kind: 'eq', expr: t };
+      if (/^[\dx.()+\-*\/^\s]+$/.test(t) && /x/.test(t) && /[+\-*\/()]/.test(t.replace(/^-/, '')) && (t.match(/\(/g) || []).length + (t.match(/[+\-]/g) || []).length >= 1) return { kind: 'poly', expr: t };
       return null;
     }
     // 模範解答の行から数値を取り出す（整数・小数・分数・帯分数・「〇分の〇」）
@@ -2865,6 +2881,20 @@
         if (!body) return;
         const k = keyItems.find(x => x.key === q.key);
         if (!k) return;
+        if (body.kind === 'poly') {
+          try {
+            let ka = stripQuestionPrefix(k.raw);
+            if (ka.includes('=')) ka = ka.slice(ka.lastIndexOf('=') + 1);
+            const am = /^[\dx.()+\-*\/^\s]+/.exec(ka.trim());
+            if (!am) return;
+            const pq = parsePoly(body.expr), pa = parsePoly(am[0]);
+            if (!qEq(pq.a, pa.a) || !qEq(pq.b, pa.b)) {
+              const fmt = p => { const a = p.a.n === 0n ? '' : (qEq(p.a, Qn(1n)) ? 'x' : qEq(p.a, Qn(-1n)) ? '-x' : qFmt(p.a) + 'x'); const b = p.b.n === 0n ? '' : (p.b.n > 0n && a ? '+' : '') + qFmt(p.b); return (a + b) || '0'; };
+              issues.push({ level: 'error', category: '模範解答の検算', detail: `「${q.key}」を整理すると ${fmt(pq)} になりますが、模範解答は ${fmt(pa)} です。（式：${body.expr.replace(/\*/g, '×').replace(/\//g, '÷')}）` });
+            }
+          } catch (e) { /* 一次式として扱えないものは対象外 */ }
+          return;
+        }
         const ans = calcAnswer(k.raw);
         if (!ans) return;
         const v = body.kind === 'calc' ? evalNumeric(body.expr) : solveLinear(body.expr);
@@ -3226,12 +3256,12 @@
           (() => {
             const order = [...new Set(qItems.map(i => i.section))];
             const nums = qItems.map(i => i.num);
-            if (order.length < 2 || new Set(nums).size !== nums.length) return;
+            if (order.length < 2) return;
             let last = null, ok = true;
             const tmp = {};
             order.forEach((sec, k) => {
               const ns = qItems.filter(i => i.section === sec).map(i => i.num);
-              if (k > 0 && ns[0] !== last + 1) ok = false;
+              if (k > 0 && !(ns[0] > last && ns[0] <= last + 3)) ok = false;   // 前の大問の続きから始まっていれば通し番号とみなす（多少の抜けは許す）
               tmp[sec] = k === 0 ? 0 : last;
               last = ns[ns.length - 1];
             });

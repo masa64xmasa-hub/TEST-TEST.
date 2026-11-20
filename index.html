@@ -864,6 +864,10 @@
 
     async function addPdf(target, file) {
       const list = TGT[target].list();
+      // 同じPDFをもう一度取り込んだときは、前回の分を置き換える（二重に取り込まない）
+      for (let k = list.length - 1; k >= 0; k--) {
+        if (list[k].name.startsWith(file.name + ' ')) { removeOcrBlock(target, list[k].id); list.splice(k, 1); }
+      }
       el.progressBox.classList.remove('hidden');
       el.progressBar.style.width = '10%';
       try {
@@ -1258,9 +1262,9 @@
           cur = { id: Number(m[1]), name: m[2], headerLine: i, lines: [] };
           blocks.push(cur);
         } else if (cur) {
-          cur.lines.push(line);
+          cur.lines.push(fixRadicals(line));
         } else if (line.trim()) {
-          cur = { id: 0, name: '読み取りテキスト', headerLine: -1, lines: [line] };
+          cur = { id: 0, name: '読み取りテキスト', headerLine: -1, lines: [fixRadicals(line)] };
           blocks.push(cur);
         }
       });

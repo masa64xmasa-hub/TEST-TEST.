@@ -818,6 +818,46 @@
       }).filter(Boolean);
     }
 
+    // ---------- PDFの中に埋め込まれた図・グラフ・写真の位置を調べる ----------
+    // operatorList から画像を描く命令を拾い、その時点の変換行列で画面上の四角形を求める
+    function pdfImageRects(OPS, opList, vp) {
+      const compose = (o, m) => [o[0] * m[0] + o[2] * m[1], o[1] * m[0] + o[3] * m[1], o[0] * m[2] + o[2] * m[3], o[1] * m[2] + o[3] * m[3], o[0] * m[4] + o[2] * m[5] + o[4], o[1] * m[4] + o[3] * m[5] + o[5]];
+      let ctm = [1, 0, 0, 1, 0, 0];
+      const stack = [];
+      const rects = [];
+      const addRect = () => {
+        const pts = [[0, 0], [1, 0], [0, 1], [1, 1]].map(([x, y]) => vp.convertToViewportPoint(ctm[0] * x + ctm[2] * y + ctm[4], ctm[1] * x + ctm[3] * y + ctm[5]));
+        const xs = pts.map(q => q[0]), ys = pts.map(q => q[1]);
+        rects.push({ x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) });
+      };
+      const { fnArray, argsArray } = opList;
+      for (let i = 0; i < fnArray.length; i++) {
+        const f = fnArray[i], a = argsArray[i];
+        if (f === OPS.save) stack.push(ctm);
+        else if (f === OPS.restore) { if (stack.length) ctm = stack.pop(); }
+        else if (f === OPS.transform) ctm = compose(ctm, a);
+        else if (f === OPS.paintFormXObjectBegin) { stack.push(ctm); if (a && a[0]) ctm = compose(ctm, a[0]); }
+        else if (f === OPS.paintFormXObjectEnd) { if (stack.length) ctm = stack.pop(); }
+        else if (f === OPS.paintImageXObject || f === OPS.paintInlineImageXObject || f === OPS.paintJpegXObject) addRect();
+      }
+      // 小さすぎるもの（罫線・飾り）、ページ全体（スキャン）は除く。重なるものは1つにまとめる
+      const pageArea = vp.width * vp.height;
+      let r = rects.filter(q => q.w >= 50 && q.h >= 50 && q.w * q.h < pageArea * 0.85);
+      let merged = true;
+      while (merged) {
+        merged = false;
+        for (let i = 0; i < r.length && !merged; i++) for (let j = i + 1; j < r.length && !merged; j++) {
+          const A = r[i], B = r[j];
+          if (A.x < B.x + B.w && B.x < A.x + A.w && A.y < B.y + B.h && B.y < A.y + A.h) {
+            const x = Math.min(A.x, B.x), y = Math.min(A.y, B.y);
+            r.splice(j, 1); r[i] = { x, y, w: Math.max(A.x + A.w, B.x + B.w) - x, h: Math.max(A.y + A.h, B.y + B.h) - y };
+            merged = true;
+          }
+        }
+      }
+      return r.sort((a, b) => a.y - b.y || a.x - b.x).slice(0, 6);
+    }
+
     async function addPdf(target, file) {
       const list = TGT[target].list();
       el.progressBox.classList.remove('hidden');
@@ -827,7 +867,7 @@
         const lib = await loadPdfJs();
         const pdf = await lib.getDocument({ data: await file.arrayBuffer() }).promise;
         const n = Math.min(pdf.numPages, PDF_MAX_PAGES);
-        let textPages = 0;
+        let textPages = 0, figCount = 0;
         for (let i = 1; i <= n; i++) {
           el.progressText.textContent = `PDF「${file.name}」を取り込み中（${i}/${n}ページ）...`;
           el.progressBar.style.width = Math.round(10 + 80 * i / n) + '%';
@@ -847,6 +887,28 @@
             preText: hasText ? lines.join('\n') : null
           });
           if (hasText) textPages++;
+          // ページ内に埋め込まれた図・グラフ・写真を別の画像として切り出し、文字を読み取る対象に加える
+          if (hasText) {
+            try {
+              const vp2 = page.getViewport({ scale: 2.5 });
+              const rects = pdfImageRects(lib.OPS, await page.getOperatorList(), vp2);
+              if (rects.length) {
+                const big = document.createElement('canvas');
+                big.width = Math.floor(vp2.width); big.height = Math.floor(vp2.height);
+                await page.render({ canvasContext: big.getContext('2d'), viewport: vp2 }).promise;
+                rects.forEach((q, k) => {
+                  const pad = 8;
+                  const sx = Math.max(0, Math.floor(q.x - pad)), sy = Math.max(0, Math.floor(q.y - pad));
+                  const sw = Math.min(big.width - sx, Math.ceil(q.w + pad * 2)), sh = Math.min(big.height - sy, Math.ceil(q.h + pad * 2));
+                  const cc = document.createElement('canvas');
+                  cc.width = sw; cc.height = sh;
+                  cc.getContext('2d').drawImage(big, sx, sy, sw, sh, 0, 0, sw, sh);
+                  list.push({ id: ++state.imageSeq, name: `${file.name} ${i}ページの図${k + 1}`, dataUrl: cc.toDataURL('image/jpeg', 0.9), preText: null });
+                  figCount++;
+                });
+              }
+            } catch (e) { console.error('図の切り出しに失敗', e); }
+          }
           page.cleanup();
           renderPreviews(target);
           updateEditorUI();
@@ -854,6 +916,7 @@
         let msg = `${TGT[target].label}にPDF ${n}ページを追加しました`;
         if (pdf.numPages > n) msg += `（上限のため先頭${PDF_MAX_PAGES}ページのみ）`;
         if (n - textPages > 0) msg += `。${n - textPages}ページは画像として文字を読み取ります`;
+        if (figCount) msg += `。ページ内の図・グラフ・写真 ${figCount}点を別の画像として取り出しました`;
         showToast(msg);
       } catch (err) {
         console.error(err);

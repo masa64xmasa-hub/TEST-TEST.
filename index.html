@@ -2504,7 +2504,8 @@
     const DICT_WEIGHTS = { 'base.dat.gz': 3.7, 'check.dat.gz': 3.0, 'tid.dat.gz': 1.5, 'tid_pos.dat.gz': 5.6, 'tid_map.dat.gz': 1.5, 'cc.dat.gz': 1.7, 'unk.dat.gz': 0.05, 'unk_pos.dat.gz': 0.01, 'unk_map.dat.gz': 0.01, 'unk_char.dat.gz': 0.01, 'unk_compat.dat.gz': 0.01, 'unk_invoke.dat.gz': 0.01 };
     // 1つ目は自分のサイト内（kuromoji/ フォルダを置いた場合のみ有効）。なければ外部の配信元を順に試す
     const KUROMOJI_BASES = ['kuromoji/', 'https://cdn.jsdelivr.net/npm/kuromoji@0.1.2/', 'https://unpkg.com/kuromoji@0.1.2/'];
-    const STALL_MS = 20000;
+    const STALL_MS = 30000;       // ダウンロードが進まない場合に別の配信元へ切り替えるまでの時間
+    const BUILD_MS = 240000;      // ダウンロード後の辞書の組み立て（端末によっては数十秒〜数分）を待つ時間
     let tokenizerError = '';
     function loadScriptOnce(src) {
       return new Promise((resolve, reject) => {
@@ -2521,7 +2522,8 @@
         if (!onProgress) return;
         let sum = 0;
         for (const [n, f] of Object.entries(files)) sum += (DICT_WEIGHTS[n] || 0.01) * f;
-        onProgress(Math.min(99, Math.floor(100 * sum / totalW)), 'download');
+        const allDone = Object.keys(DICT_WEIGHTS).every(n => files[n] === 1);
+        onProgress(allDone ? 99 : Math.min(98, Math.floor(100 * sum / totalW)), allDone ? 'build' : 'download');
       };
       // 辞書の読み込み中だけ XMLHttpRequest を見張って進み具合を集計する（kuromoji側がURLの "//" を "/" に直すことがあるため、ファイル名で判定）
       const origOpen = XMLHttpRequest.prototype.open;
@@ -2552,8 +2554,8 @@
           const label = base.startsWith('http') ? base.split('/')[2] : 'このサイト内';
           let timer = null, rejectStall;
           const stalled = new Promise((_, rej) => { rejectStall = rej; });
-          const arm = () => { clearTimeout(timer); timer = setTimeout(() => rejectStall(new Error(`${STALL_MS / 1000}秒間進みませんでした（接続が制限されている可能性があります）`)), STALL_MS); };
-          const prog = (pct, phase) => { arm(); if (onProgress) onProgress(pct, phase); };
+          const arm = (ms) => { clearTimeout(timer); timer = setTimeout(() => rejectStall(new Error(ms === BUILD_MS ? '辞書の組み立てが終わりませんでした（端末のメモリ不足の可能性があります）' : `${STALL_MS / 1000}秒間進みませんでした（接続が制限されている可能性があります）`)), ms || STALL_MS); };
+          const prog = (pct, phase) => { arm(phase === 'build' ? BUILD_MS : STALL_MS); if (onProgress) onProgress(pct, phase); };
           try {
             arm();
             if (onProgress) onProgress(0, 'connect', label);
@@ -3031,6 +3033,7 @@
               el.progressText.textContent = phase === 'ready'
                 ? '文法チェック用の辞書の準備ができました（100%）'
                 : phase === 'retry' ? '辞書の取得に失敗したため、別の配信元で再試行しています...'
+                : phase === 'build' ? '辞書をダウンロードしました。端末で組み立てています（数十秒かかることがあります。画面を閉じずにお待ちください）...'
                 : phase === 'connect' ? `辞書の配信元に接続しています（${src}）...`
                 : `文法チェック用の辞書を読み込み中です：${pct}%（初回のみ・約17MB。入力した文章は送信されません）`;
             };

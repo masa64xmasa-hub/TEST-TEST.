@@ -793,6 +793,10 @@
     }
 
     // PDFの文字要素を、位置情報から「行」にまとめる
+    // 康熙部首・CJK部首（⼤⽔⼩など。見た目は同じ別の文字）を通常の漢字に直す
+    function fixRadicals(t) {
+      return t.replace(/[\u2E80-\u2EF3\u2F00-\u2FD5]/g, c => c.normalize('NFKC'));
+    }
     function pdfTextToLines(items) {
       const arr = items.filter(i => i.str && i.str.length).map(i => ({
         s: i.str, x: i.transform[4], y: i.transform[5], w: i.width || 0,
@@ -814,7 +818,7 @@
           out += it.s;
           prevEnd = it.x + it.w;
         });
-        return out.trim();
+        return fixRadicals(out).trim();
       }).filter(Boolean);
     }
 
@@ -1575,6 +1579,16 @@
       return found.length >= 2 ? found : [];
     }
 
+    // 問題用紙は大問ごとに分かれ、解答用紙・模範解答は「問1・問2…」の通し番号だけのとき、問題用紙の大問に合わせて読み替える
+    function alignSections(qItems, items, rawText) {
+      if (!items.length || /大\s*問|【\s*大|^\s*第\s*[0-9一二三四五六七八九十]+\s*問/m.test(rawText)) return items;
+      const nums = qItems.map(q => q.num);
+      if (new Set(nums).size !== nums.length || new Set(qItems.map(q => q.section)).size < 2) return items;
+      return items.map(it => {
+        const q = qItems.find(x => x.num === it.num);
+        return q ? Object.assign({}, it, { section: q.section, key: q.key }) : it;
+      });
+    }
     function parseQuestionsFromText(rawText) {
       const normalized = normalizeOcrText(rawText);
       const lines = normalized.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
@@ -1615,7 +1629,7 @@
           }
         }
 
-        const qMatch = line.match(/^(?:問|設問|\()\s*([0-9]+)\s*(?:\)|\.|．|\s|\[|【|$)/);
+        const qMatch = line.match(/^(?:問|設問|\()\s*([0-9]+)\s*(?:\)|\.|．|\s|\[|【|（|\(|：|:|$)/);
         if (qMatch) {
           const num = parseInt(qMatch[1], 10);
 
@@ -1638,7 +1652,7 @@
           for (let j = idx + 1; j < lines.length; j++) {
             const nextL = lines[j];
             if (/^(?:【|\[)?\s*(?:大問|第)\s*[0-9一二三四五六七八九十]+/.test(nextL)) break;
-            if (/^(?:問|設問|\()\s*[0-9]+\s*(?:\)|\.|．|\s|\[|【|$)/.test(nextL)) break;
+            if (/^(?:問|設問|\()\s*[0-9]+\s*(?:\)|\.|．|\s|\[|【|（|\(|：|:|$)/.test(nextL)) break;
             lookaheadBlock += ' ' + nextL;
           }
 
@@ -1707,7 +1721,7 @@
       ['答なさい', '答えなさい', '送り仮名が抜けています。'],
       ['づつ', 'ずつ', '「ずつ」が正しい表記です。'],
       ['いづれ', 'いずれ', '「いずれ」が正しい表記です。'],
-      ['水容液', '水溶液'], ['水用液', '水溶液'], ['容解', '溶解'], ['屈析', '屈折'], ['飽合', '飽和'],
+      ['水容液', '水溶液'], ['水用液', '水溶液'], ['実険', '実験'], ['沸どう', '沸とう'], ['容解', '溶解'], ['屈析', '屈折'], ['飽合', '飽和'],
       ['直例', '直列'], ['並例', '並列'], ['光号成', '光合成'],
       ['三権分率', '三権分立'], ['国民主件', '国民主権'], ['都道府件', '都道府県'],
       ['平衡四辺形', '平行四辺形'], ['三角計', '三角形'], ['四角計', '四角形'],
@@ -2868,9 +2882,10 @@
       });
       // グラフの単位・軸の確認
       const graphMention = /グラフ|折れ線|棒グラフ|円グラフ|縦軸|横軸/.test(text);
-      const ocrText = z2h((o.blocks || []).map(b => b.lines.join('\n')).join('\n'));
+      const imgBlocks = (o.blocks || []).filter(b => !/\d+ページ$/.test(b.name || ''));   // ページ全体の文字は除く（図の中の文字だけを見る）
+      const ocrText = z2h(imgBlocks.map(b => b.lines.join('\n')).join('\n'));
       const hasUnit = /[\(（\[〔［][^\)）\]〕］\s]{1,8}[\)）\]〕］]|単位|縦軸|横軸/.test(ocrText);
-      if (graphMention && (o.blocks || []).some(b => b.lines.join('').replace(/\s/g, '').length >= 8) && !hasUnit)
+      if (graphMention && imgBlocks.some(b => b.lines.join('').replace(/\s/g, '').length >= 8) && !hasUnit)
         out.push({ level: 'warn', category: 'グラフの単位・軸が見当たりません', detail: 'グラフに触れていますが、画像内から単位（（cm）・〔g〕など）や縦軸・横軸の名前が読み取れませんでした。グラフに軸の名前と単位が入っているか確認してください（文字が小さくて読み取れていない場合もあります）。', score: 1 });
       return out;
     }
@@ -3022,14 +3037,30 @@
 
         // 2. 設問パースと大問ごとのスマート連番・重複・図表参照チェック
         const qItems = parseQuestionsFromText(fullQ);
-        const aItems = parseQuestionsFromText(fullA);
+        const aItems = alignSections(qItems, parseQuestionsFromText(fullA), fullA);
 
         if (el.chkNumbering.checked) {
           const sections = [...new Set([...qItems.map(i => i.section), ...aItems.map(i => i.section)])];
+          // 大問をまたいで問1,問2,…と通し番号になっている問題用紙では、大問の先頭が前の大問の続きから始まるのを正しいとみなす
+          const startPrev = {};
+          (() => {
+            const order = [...new Set(qItems.map(i => i.section))];
+            const nums = qItems.map(i => i.num);
+            if (order.length < 2 || new Set(nums).size !== nums.length) return;
+            let last = null, ok = true;
+            const tmp = {};
+            order.forEach((sec, k) => {
+              const ns = qItems.filter(i => i.section === sec).map(i => i.num);
+              if (k > 0 && ns[0] !== last + 1) ok = false;
+              tmp[sec] = k === 0 ? 0 : last;
+              last = ns[ns.length - 1];
+            });
+            if (ok) Object.assign(startPrev, tmp);
+          })();
           sections.forEach(sec => {
             const secQs = qItems.filter(i => i.section === sec);
             const seen = new Set();
-            let prevNum = 0;
+            let prevNum = startPrev[sec] || 0;
             secQs.forEach(item => {
               if (seen.has(item.num)) {
                 issues.push({
@@ -3060,7 +3091,7 @@
             figCounts[norm] = (figCounts[norm] || 0) + 1;
           });
           Object.entries(figCounts).forEach(([figName, count]) => {
-            if (count === 1) {
+            if (count === 1 && !issues.some(f => f.category.startsWith(figName[0] + '番号') || f.category.startsWith(figName[0] + 'の参照先'))) {
               issues.push({
                 level: 'warn',
                 category: '図・表番号の参照確認',
@@ -3156,7 +3187,7 @@
         const keyText = [el.textKey.value, ...parseOcrBlocks(el.ocrK.value).map(b => b.lines.join('\n'))].join('\n');
         if (el.chkConsistency.checked && keyText.trim()) {
           const keyNorm = normalizeKeyText(keyText).replace(/(問\s*[0-9０-９]+)\s*[:：=＝]\s*/g, '$1 ');
-          const keyItems = parseQuestionsFromText(keyNorm);
+          const keyItems = alignSections(qItems, parseQuestionsFromText(keyNorm), keyNorm);
           issues.push(...verifyCalculations(qItems, keyItems), ...checkAnswerBias(keyItems));
           const noKey = qItems.filter(q => !keyItems.some(k => k.key === q.key));
           if (noKey.length) {
@@ -3194,7 +3225,11 @@
 
         // 4. 目標合計点（満点）チェック
         if (el.chkScore.checked) {
-          const targetTotal = parseInt(el.inputScore.value, 10) || 100;
+          let targetTotal = parseInt(el.inputScore.value, 10) || 100;
+          const statedFull = (/([0-9０-９]{2,3})\s*点\s*満点|満点\s*[:：]?\s*([0-9０-９]{2,3})\s*点/.exec(fullQ) || []);
+          const statedN = parseInt(((statedFull[1] || statedFull[2] || '')).replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)), 10);
+          const usedStated = !!statedN && targetTotal === 100 && statedN !== 100;   // 入力欄が初期値のままなら、問題用紙に書かれた満点を使う
+          if (usedStated) targetTotal = statedN;
           const sumQ = qItems.reduce((acc, cur) => acc + (cur.points || 0), 0);
           const sumA = aItems.reduce((acc, cur) => acc + (cur.points || 0), 0);
           const missingPtQ = qItems.filter(i => i.points === null);
@@ -3212,7 +3247,7 @@
             issues.push({
               level: 'warn',
               category: '目標合計点との不一致（問題用紙）',
-              detail: `目標合計点は ${targetTotal}点 ですが、問題用紙から読み取れた配点の合計は ${sumQ}点 です（${diff > 0 ? diff + '点不足' : Math.abs(diff) + '点超過'}）。`
+              detail: `目標合計点は ${targetTotal}点${usedStated ? "（問題用紙の満点の記載を使用）" : ""} ですが、問題用紙から読み取れた配点の合計は ${sumQ}点 です（${diff > 0 ? diff + '点不足' : Math.abs(diff) + '点超過'}）。`
             });
           }
           if (aItems.length > 0 && sumA !== targetTotal) {
@@ -3220,7 +3255,7 @@
             issues.push({
               level: 'warn',
               category: '目標合計点との不一致（解答用紙）',
-              detail: `目標合計点は ${targetTotal}点 ですが、解答用紙から読み取れた配点の合計は ${sumA}点 です（${diff > 0 ? diff + '点不足' : Math.abs(diff) + '点超過'}）。`
+              detail: `目標合計点は ${targetTotal}点${usedStated ? "（問題用紙の満点の記載を使用）" : ""} ですが、解答用紙から読み取れた配点の合計は ${sumA}点 です（${diff > 0 ? diff + '点不足' : Math.abs(diff) + '点超過'}）。`
             });
           }
 

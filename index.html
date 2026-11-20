@@ -219,13 +219,13 @@
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
-            <span>画像・PDF・txt・Excelを追加</span>
-            <input id="file-question" type="file" accept="image/*,application/pdf,.pdf,.txt,.csv,.tsv,.md,.xlsx,.xls,.xlsm,.ods" multiple class="hidden" />
+            <span>画像・PDF・Word・Excel・txtを追加</span>
+            <input id="file-question" type="file" accept="image/*,application/pdf,.pdf,.txt,.csv,.tsv,.md,.docx,.doc,.xlsx,.xls,.xlsm,.ods" multiple class="hidden" />
           </label>
         </div>
 
         <p class="text-xs text-slate-500 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
-          テキスト入力、画像・PDF・txt・Excel（xlsx/xls/csv）のドラッグ＆ドロップ（PDFは全ページを自動で取り込みます。txt・Excelは文字として読み込みます）、またはこの枠内で <kbd class="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[11px] font-mono">Ctrl+V</kbd> で画像を直接貼り付けられます。
+          テキスト入力、画像・PDF・Word（docx）・Excel（xlsx/xls/csv）・txtのドラッグ＆ドロップ（PDFは全ページを自動で取り込みます。Word・Excel・txtは文字として読み込みます）、またはこの枠内で <kbd class="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[11px] font-mono">Ctrl+V</kbd> で画像を直接貼り付けられます。
         </p>
 
         <div class="relative flex rounded-xl border border-slate-300 overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 bg-white">
@@ -268,13 +268,13 @@
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
-            <span>画像・PDF・txt・Excelを追加</span>
-            <input id="file-answer" type="file" accept="image/*,application/pdf,.pdf,.txt,.csv,.tsv,.md,.xlsx,.xls,.xlsm,.ods" multiple class="hidden" />
+            <span>画像・PDF・Word・Excel・txtを追加</span>
+            <input id="file-answer" type="file" accept="image/*,application/pdf,.pdf,.txt,.csv,.tsv,.md,.docx,.doc,.xlsx,.xls,.xlsm,.ods" multiple class="hidden" />
           </label>
         </div>
 
         <p class="text-xs text-slate-500 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
-          テキスト入力、画像・PDF・txt・Excel（xlsx/xls/csv）のドラッグ＆ドロップ（PDFは全ページを自動で取り込みます。txt・Excelは文字として読み込みます）、またはこの枠内で <kbd class="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[11px] font-mono">Ctrl+V</kbd> で画像を直接貼り付けられます。
+          テキスト入力、画像・PDF・Word（docx）・Excel（xlsx/xls/csv）・txtのドラッグ＆ドロップ（PDFは全ページを自動で取り込みます。Word・Excel・txtは文字として読み込みます）、またはこの枠内で <kbd class="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[11px] font-mono">Ctrl+V</kbd> で画像を直接貼り付けられます。
         </p>
 
         <div class="relative flex rounded-xl border border-slate-300 overflow-hidden focus-within:ring-2 focus-within:ring-emerald-500 bg-white">
@@ -316,8 +316,8 @@
           <p class="text-xs text-slate-500">「問1 イ」の形式が基本ですが、「1 (1) ア (2) イ」のような書き方や、1行に複数の答え、表（タブ・「|」区切り）からの貼り付けも自動で整形します。大問ごとに「【大問1】」の行を入れると確実です。画像・PDFを追加すると文字を読み取って照合に使います（この枠にドラッグ＆ドロップも可）。</p>
           <button id="btn-key-sample" type="button" class="text-xs bg-amber-50 hover:bg-amber-100 text-amber-800 font-medium px-3 py-2 rounded-xl border border-amber-200 transition">サンプル模範解答を入力</button>
           <label class="cursor-pointer text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-medium px-3 py-2 rounded-xl border border-indigo-200 transition">
-            <span>画像・PDF・txt・Excelを追加</span>
-            <input id="file-key" type="file" accept="image/*,application/pdf,.pdf,.txt,.csv,.tsv,.md,.xlsx,.xls,.xlsm,.ods" multiple class="hidden" />
+            <span>画像・PDF・Word・Excel・txtを追加</span>
+            <input id="file-key" type="file" accept="image/*,application/pdf,.pdf,.txt,.csv,.tsv,.md,.docx,.doc,.xlsx,.xls,.xlsm,.ods" multiple class="hidden" />
           </label>
         </div>
         <textarea id="text-key" rows="6" placeholder="【大問1】&#10;問1 イ&#10;問2 葉緑体&#10;&#10;【大問2】&#10;問1 北海道" class="w-full px-3 py-2 text-xs sm:text-sm leading-relaxed font-mono-editor border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"></textarea>
@@ -344,9 +344,9 @@
           <label class="cursor-pointer text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-3 py-2 rounded-xl border border-slate-300 transition inline-flex items-center gap-1.5">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12m0-12l-4 4m4-4l4 4"/></svg>
             <span>ファイルから読み込む</span>
-            <input id="file-prev" type="file" accept="image/*,application/pdf,.pdf,.txt,.csv,.tsv,.md,.xlsx,.xls,.xlsm,.ods" multiple class="hidden" />
+            <input id="file-prev" type="file" accept="image/*,application/pdf,.pdf,.txt,.csv,.tsv,.md,.docx,.doc,.xlsx,.xls,.xlsm,.ods" multiple class="hidden" />
           </label>
-          <span class="text-[11px] text-slate-500">画像・PDF・txt・Excel（xlsx/xls/csv）に対応。ドラッグ＆ドロップも使えます。</span>
+          <span class="text-[11px] text-slate-500">画像・PDF・Word（docx）・Excel（xlsx/xls/csv）・txtに対応。ドラッグ＆ドロップも使えます。</span>
         </div>
         <textarea id="text-prev" rows="5" placeholder="前回の問題用紙のテキストをここに貼り付けます" class="w-full px-3 py-2 text-xs sm:text-sm leading-relaxed font-mono-editor border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"></textarea>
       </div>
@@ -744,6 +744,7 @@
     function addImages(target, files) {
       const list = TGT[target].list();
       Array.from(files).forEach(file => {
+        if (isWordFile(file)) { importChain = importChain.then(() => addDocx(target, file)); return; }
         if (isTextFile(file) || isExcelFile(file)) {
           const ta = target === 'question' ? el.textQ : target === 'answer' ? el.textA : el.textKey;
           importFilesToTextarea(ta, [file], TGT[target].label);
@@ -965,6 +966,73 @@
       else if (/\.tsv$/i.test(file.name)) t = t.split(/\r?\n/).map(l => l.split('\t').filter(c => c !== '').join(' ')).join('\n');
       return t.replace(/\r\n?/g, '\n').trim();
     }
+    // ---------- Word（.docx）の読み込み ----------
+    // docx は zip の中の word/document.xml に本文が入っている。表は1行を1行の文字にまとめる
+    function docxXmlToText(xml) {
+      const dec = t => t.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&#(\d+);/g, (_, d) => String.fromCharCode(+d)).replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCharCode(parseInt(h, 16))).replace(/&amp;/g, '&');
+      let x = xml.replace(/<w:(?:delText|instrText)[^>]*>[\s\S]*?<\/w:(?:delText|instrText)>/g, '')
+        .replace(/<w:tc>[\s\S]*?<\/w:tc>/g, tc => tc.replace(/<\/w:p>/g, ' ') + '\u0001')
+        .replace(/<\/w:tr>/g, '\n')
+        .replace(/<\/w:p>/g, '\n')
+        .replace(/<w:tab\/>/g, ' ')
+        .replace(/<w:(?:br|cr)\b[^>]*\/>/g, '\n')
+        .replace(/<[^>]+>/g, '');
+      x = dec(x).replace(/ ?\u0001/g, ' ');
+      return x.split('\n').map(l => l.replace(/[ \t]+$/g, '').replace(/^[ \t]+/, '')).filter((l, i, a) => l || (a[i - 1] && a[i - 1] !== '')).join('\n').trim();
+    }
+    let jszipPromise = null;
+    function loadJsZip() {
+      if (window.JSZip) return Promise.resolve(window.JSZip);
+      if (jszipPromise) return jszipPromise;
+      jszipPromise = new Promise((resolve, reject) => {
+        const sc = document.createElement('script');
+        sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+        sc.onload = () => resolve(window.JSZip);
+        sc.onerror = () => { jszipPromise = null; reject(new Error('Word読み込み用の部品を取得できませんでした。ネットワーク接続を確認してください')); };
+        document.head.appendChild(sc);
+      });
+      return jszipPromise;
+    }
+    const isWordFile = f => /\.(docx|doc)$/i.test(f.name || '') || /wordprocessingml|msword/.test(f.type || '');
+    async function readDocx(file, withImages) {
+      if (/\.doc$/i.test(file.name) || (file.type === 'application/msword')) throw new Error('古い形式（.doc）は読み込めません。Wordで「名前を付けて保存」から .docx 形式で保存し直してください');
+      const Z = await loadJsZip();
+      const zip = await Z.loadAsync(await file.arrayBuffer());
+      const docFile = zip.file('word/document.xml');
+      if (!docFile) throw new Error('Wordファイルとして読み込めませんでした');
+      const text = docxXmlToText(await docFile.async('string'));
+      const images = [];
+      if (withImages) {
+        const media = Object.keys(zip.files).filter(n => /^word\/media\/[^/]+\.(png|jpe?g|gif|bmp)$/i.test(n)).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).slice(0, 12);
+        for (const n of media) {
+          const ext = n.split('.').pop().toLowerCase().replace('jpg', 'jpeg');
+          const b64 = await zip.file(n).async('base64');
+          images.push({ name: n.split('/').pop(), dataUrl: `data:image/${ext};base64,${b64}` });
+        }
+      }
+      return { text, images };
+    }
+    async function addDocx(target, file) {
+      el.progressBox.classList.remove('hidden');
+      el.progressBar.style.width = '30%';
+      el.progressText.textContent = `Word「${file.name}」を読み込んでいます...`;
+      try {
+        const { text, images } = await readDocx(file, true);
+        const ta = target === 'question' ? el.textQ : target === 'answer' ? el.textA : el.textKey;
+        const list = TGT[target].list();
+        if (text) appendToTextarea(ta, text);
+        // 埋め込まれた図・グラフ・写真は別の画像として加え、文字を読み取る対象にする
+        for (let k = list.length - 1; k >= 0; k--) if (list[k].name.startsWith(file.name + ' ')) list.splice(k, 1);
+        removeOcrBlocksByName(target, file.name);
+        images.forEach((im, k) => list.push({ id: ++state.imageSeq, name: `${file.name} の図${k + 1}`, dataUrl: im.dataUrl, preText: null }));
+        renderPreviews(target); updateEditorUI();
+        showToast(`${TGT[target].label}にWord「${file.name}」を読み込みました` + (images.length ? `（図・画像 ${images.length}点も取り出しました）` : ''));
+        if (!text && !images.length) showToast(`「${file.name}」から文字や画像を読み取れませんでした`);
+      } catch (err) {
+        console.error(err);
+        showToast(`「${file.name}」を読み込めませんでした: ` + (err && err.message ? err.message : err));
+      } finally { el.progressBox.classList.add('hidden'); }
+    }
     async function readExcelFile(file) {
       const X = await loadXlsx();
       const wb = X.read(await file.arrayBuffer(), { type: 'array' });
@@ -1006,6 +1074,7 @@
     async function fileToText(file) {
       if (isTextFile(file)) return readTextFile(file);
       if (isExcelFile(file)) return readExcelFile(file);
+      if (isWordFile(file)) return (await readDocx(file, false)).text;
       if (isPdfFile(file)) return readPdfAsText(file);
       if ((file.type || '').startsWith('image/')) return readImageAsText(file);
       return null;
@@ -1023,7 +1092,7 @@
           el.progressText.textContent = `「${file.name}」を読み込んでいます...`;
           try {
             const t = await fileToText(file);
-            if (t === null) showToast(`「${file.name}」は対応していない形式です（画像・PDF・txt・Excelに対応）`);
+            if (t === null) showToast(`「${file.name}」は対応していない形式です（画像・PDF・Word・Excel・txtに対応）`);
             else if (!t) showToast(`「${file.name}」から文字を読み取れませんでした`);
             else { appendToTextarea(ta, t); showToast(`${label}に「${file.name}」を読み込みました`); }
           } catch (err) {

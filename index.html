@@ -866,8 +866,9 @@
       const list = TGT[target].list();
       // 同じPDFをもう一度取り込んだときは、前回の分を置き換える（二重に取り込まない）
       for (let k = list.length - 1; k >= 0; k--) {
-        if (list[k].name.startsWith(file.name + ' ')) { removeOcrBlock(target, list[k].id); list.splice(k, 1); }
+        if (list[k].name.startsWith(file.name + ' ')) list.splice(k, 1);
       }
+      removeOcrBlocksByName(target, file.name);
       el.progressBox.classList.remove('hidden');
       el.progressBar.style.width = '10%';
       try {
@@ -1269,6 +1270,30 @@
         }
       });
       return blocks;
+    }
+
+    // 読み取りテキスト欄から、名前が「prefix＋空白」で始まる画像の枠（▼画像…）をすべて消す
+    function removeOcrBlocksByName(target, prefix) {
+      const ta = TGT[target].ta();
+      let guard = 0;
+      for (;;) {
+        const b = parseOcrBlocks(ta.value).find(x => x.headerLine >= 0 && x.name.startsWith(prefix + ' '));
+        if (!b || guard++ > 500) break;
+        const lines = ta.value.split('\n');
+        lines.splice(b.headerLine, 1 + b.lines.length);
+        ta.value = lines.join('\n');
+      }
+      ta.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    // 同じ名前の枠が複数あるときは最初の1つだけを使う（保存された古い読み取り結果との二重化を防ぐ）
+    function dedupeBlocks(blocks) {
+      const seen = new Set();
+      return blocks.filter(b => {
+        if (b.headerLine < 0) return true;
+        if (seen.has(b.name)) return false;
+        seen.add(b.name);
+        return true;
+      });
     }
 
     function removeOcrBlock(target, id) {
@@ -2915,8 +2940,8 @@
         await ensureOcr('key');
         el.progressBar.style.width = '80%';
 
-        const qBlocks = parseOcrBlocks(el.ocrQ.value);
-        const aBlocks = parseOcrBlocks(el.ocrA.value);
+        const qBlocks = dedupeBlocks(parseOcrBlocks(el.ocrQ.value));
+        const aBlocks = dedupeBlocks(parseOcrBlocks(el.ocrA.value));
         const fullQ = [rawQ, ...qBlocks.map(b => b.lines.join('\n'))].join('\n').trim();
         const fullA = [rawA, ...aBlocks.map(b => b.lines.join('\n'))].join('\n').trim();
 

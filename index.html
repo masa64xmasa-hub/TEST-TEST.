@@ -3165,8 +3165,11 @@
           proofSources.forEach(sheet => {
             if (!sheet.text.trim()) return;
             const isQ = sheet.ta === 'textQ' || sheet.ta === 'ocrQ';
+            // 図の切り出し部分は文字認識が不安定なので、括弧の対応チェックは行わない
+            const isFig = /(ページ)?の図[0-9０-９]+」?$/.test(sheet.label.replace(/」$/, '')) || /の図[0-9０-９]+$/.test(sheet.label.replace(/」$/, ''));
             [...checkTyposAndKanji(sheet.text), ...(tokenizer ? checkGrammar(tokenizer, sheet.text) : []),
-             ...(isQ && state.gradeMap && gradeSel ? gradeIssues(sheet.text, state.gradeMap, gradeSel) : [])].forEach(t => {
+             ...(isQ && state.gradeMap && gradeSel ? gradeIssues(sheet.text, state.gradeMap, gradeSel) : [])]
+              .filter(t => !(isFig && t.category === CAT.BRACKET)).forEach(t => {
               const k0 = t.wrong ? `${t.category}|${t.wrong}` : null;
               if (k0 && state.ignore.has(k0)) { ignoredCount++; return; }
               const issue = { level: t.level, category: `${t.category}（${sheet.label}）`, detail: t.detail,

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex" />
+  <title>ご購入ありがとうございます | TEST-TEST.</title>
+  <style>
+    :root { --bg:#f8fafc; --card:#ffffff; --text:#0f172a; --muted:#475569; --line:#e2e8f0; --accent:#4f46e5; --ok:#047857; --ng:#be123c; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg:#0f172a; --card:#1e293b; --text:#f1f5f9; --muted:#cbd5e1; --line:#334155; --accent:#818cf8; --ok:#34d399; --ng:#fb7185; }
+    }
+    * { box-sizing: border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif; line-height:1.7; }
+    main { max-width:560px; margin:0 auto; padding:32px 20px 48px; }
+    h1 { font-size:1.4rem; margin:0 0 8px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:20px; margin-top:20px; }
+    .key { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:1.25rem; font-weight:700; letter-spacing:.04em; word-break:break-all; padding:14px; border:2px dashed var(--accent); border-radius:12px; text-align:center; user-select:all; }
+    button, .btn { display:inline-block; margin-top:12px; padding:10px 16px; font-size:.9rem; font-weight:700; color:#fff; background:var(--accent); border:0; border-radius:10px; cursor:pointer; text-decoration:none; }
+    .muted { color:var(--muted); font-size:.88rem; }
+    .ok { color:var(--ok); } .ng { color:var(--ng); }
+    ul { padding-left:1.2em; margin:8px 0 0; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>ご購入ありがとうございます</h1>
+  <p class="muted">AIによる高精度チェックのライセンスキーを発行します。</p>
+
+  <div class="card" id="box">
+    <p id="msg">キーを発行しています…（数秒かかることがあります）</p>
+    <div id="keyWrap" hidden>
+      <div class="key" id="key"></div>
+      <button id="copy" type="button">キーをコピー</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <strong>大切にお読みください</strong>
+    <ul class="muted">
+      <li>このキーは<strong>この画面に表示されるのは購入後の短い間だけ</strong>です。必ずコピーして、安全な場所に保管してください。</li>
+      <li>キーは他の人に教えないでください。月間の利用回数はキーごとに数えます。</li>
+      <li>解約・カード変更は、Stripeからの領収メールにあるリンクから行えます。</li>
+    </ul>
+    <a class="btn" href="./">TEST-TEST. に戻る</a>
+  </div>
+</main>
+
+<script>
+  // WorkerのURL(index.html の AI_CONFIG.apiBase と同じ値にしてください)
+  const API_BASE = '';
+
+  const msg = document.getElementById('msg');
+  const keyWrap = document.getElementById('keyWrap');
+  const keyEl = document.getElementById('key');
+  const sessionId = new URLSearchParams(location.search).get('session_id') || '';
+
+  function fail(text) { msg.textContent = text; msg.className = 'ng'; }
+
+  async function fetchKey() {
+    if (!API_BASE) return fail('この画面はまだ設定されていません(API_BASEが空です)。');
+    if (!/^cs_[A-Za-z0-9_]+$/.test(sessionId)) return fail('購入情報が見つかりません。購入完了後のリンクから開き直してください。');
+
+    // 購入の通知(Webhook)が届くまで少し待つことがあるため、数回くり返し確認する
+    for (let i = 0; i < 12; i++) {
+      try {
+        const res = await fetch(API_BASE + '/api/key?session_id=' + encodeURIComponent(sessionId));
+        if (res.ok) {
+          const data = await res.json();
+          keyEl.textContent = data.key;
+          keyWrap.hidden = false;
+          msg.textContent = 'キーを発行しました。';
+          msg.className = 'ok';
+          return;
+        }
+      } catch (e) { /* ネットワークの一時的な失敗は再試行 */ }
+      await new Promise(r => setTimeout(r, 2500));
+    }
+    fail('キーの発行に時間がかかっています。しばらくしてからこのページを再読み込みしてください。解決しない場合は、お問い合わせフォームからご連絡ください。');
+  }
+
+  document.getElementById('copy').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(keyEl.textContent);
+      document.getElementById('copy').textContent = 'コピーしました';
+    } catch (e) {
+      const range = document.createRange(); range.selectNodeContents(keyEl);
+      const sel = getSelection(); sel.removeAllRanges(); sel.addRange(range);
+    }
+  });
+
+  fetchKey();
+</script>
+</body>
+</html>

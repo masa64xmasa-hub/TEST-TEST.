@@ -1,0 +1,21 @@
+name = "test-test-api"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+[vars]
+# サイトのオリジン(末尾のスラッシュ・パスは付けない)。独自ドメインに移行したらここも変更
+ALLOWED_ORIGIN = "https://masa64xmasa-hub.github.io"
+# 1ライセンスあたりの月間AIチェック回数(費用の試算に合わせて決める)
+MONTHLY_LIMIT = "30"
+# 使うAIモデル。精度と費用を比べて変更できる
+AI_MODEL = "claude-haiku-5-5"
+# 1回に送れる合計文字数
+MAX_CHARS = "20000"
+
+[[kv_namespaces]]
+binding = "LICENSES"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"   # `npx wrangler kv namespace create LICENSES` で表示されるID
+
+# 秘密の値はファイルに書かず、次のコマンドで登録します
+#   npx wrangler secret put ANTHROPIC_API_KEY
+#   npx wrangler secret put STRIPE_WEBHOOK_SECRET

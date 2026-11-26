@@ -520,7 +520,10 @@
             <tbody id="export-tbody" class="divide-y divide-slate-100"></tbody>
           </table>
         </div>
-        <p id="export-total" class="text-xs font-bold text-slate-700"></p>
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <p id="export-total" class="text-xs font-bold text-slate-700"></p>
+          <button id="export-fill" type="button" class="text-xs bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold px-3 py-1.5 rounded-lg transition disabled:opacity-40">未設定の配点を均等に割り振る</button>
+        </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <div class="space-y-3">
@@ -1075,29 +1078,258 @@
     function fixRadicals(t) {
       return t.replace(/[\u2E80-\u2EF3\u2F00-\u2FD5]/g, c => c.normalize('NFKC'));
     }
+    // 分数（小さい文字の分子・分母）と上付き文字を「分子/分母」「x^2」の形にして、1つの文字要素にまとめる。
+    // 数字・英字・演算子だけを対象にし、ふりがな・脚注などの日本語の小さい文字には触れない
+    function pdfMergeMath(arr) {
+      if (arr.length < 4) return arr;
+      const cnt = {};
+      arr.forEach(i => { const k = i.h.toFixed(1); cnt[k] = (cnt[k] || 0) + 1; });
+      const H = Number(Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0]);
+      const mathy = t => /^[0-9a-zA-Z+\-−±√.()\s]{1,24}$/.test(t) && /\S/.test(t);
+      const wrap = t => { t = t.trim(); return /.[+\-−±×÷]/.test(t) ? `(${t})` : t; };
+      const used = new Set();
+      const out = [];
+      // 分数：小さい文字の上下ペア（上＝分子、下＝分母）
+      const small = arr.filter(i => i.h <= H * 0.92 && mathy(i.s));
+      small.slice().sort((a, b) => b.y - a.y).forEach(a => {
+        if (used.has(a)) return;
+        let best = null;
+        small.forEach(b => {
+          if (b === a || used.has(b)) return;
+          const dy = a.y - b.y;
+          if (dy < H * 0.6 || dy > H * 1.6) return;
+          if (!(a.x < b.x + b.w && b.x < a.x + a.w)) return;
+          if (!best || dy < a.y - best.y) best = b;
+        });
+        if (!best) return;
+        used.add(a); used.add(best);
+        const x0 = Math.min(a.x, best.x), x1 = Math.max(a.x + a.w, best.x + best.w);
+        out.push({ s: `${wrap(a.s)}/${wrap(best.s)}`, x: x0, w: x1 - x0, y: (a.y + best.y) / 2, h: H, frac: true });
+      });
+      // 上付き文字：直前の数式の文字にくっついて、少し上にある短い数字・英字
+      const rest = arr.filter(i => !used.has(i));
+      const sup = new Set();
+      rest.forEach(c => {
+        if (!/^[0-9a-zA-Z]{1,2}\s*$/.test(c.s) || c.frac) return;
+        const base = rest.find(b => b !== c && !sup.has(b) && !b.frac && Math.abs(b.x + b.w - c.x) <= 1.5 && c.y - b.y >= H * 0.25 && c.y - b.y <= H * 0.9 && /[)\]0-9A-Za-z]\s*$/.test(b.s));
+        if (!base) return;
+        sup.add(c);
+        base.s = base.s.replace(/\s+$/, '') + '^' + c.s.trim() + (/\s$/.test(c.s) ? ' ' : '');
+        base.w = c.x + c.w - base.x;
+      });
+      return [...rest.filter(i => !sup.has(i)), ...out];
+    }
+
+    function pdfGroupRows(arr) {
+      const s = arr.slice().sort((a, b) => (b.y - a.y) || (a.x - b.x));
+      const rows = [];
+      s.forEach(it => {
+        const last = rows[rows.length - 1];
+        if (last && Math.abs(last.y - it.y) <= Math.max(2, Math.min(last.h, it.h) * 0.5)) last.items.push(it);
+        else rows.push({ y: it.y, h: it.h, items: [it] });
+      });
+      return rows;
+    }
+    function pdfJoinItems(its) {
+      const s = its.slice().sort((a, b) => a.x - b.x);
+      let out = '';
+      let prevEnd = null, prevFrac = false;
+      s.forEach(it => {
+        const gap = prevEnd === null ? 0 : it.x - prevEnd;
+        if (prevEnd !== null && gap > it.h * 0.25 && /[\x21-\x7e]$/.test(out) && /^[\x21-\x7e×÷±≦≧√−π]/.test(it.s)) out += ' ';
+        else if (prevEnd !== null && (it.frac || prevFrac) && !/[(\s]$/.test(out)) out += ' ';
+        out += it.s;
+        prevEnd = it.x + it.w;
+        prevFrac = !!it.frac;
+      });
+      return pdfTidyMath(fixRadicals(out));
+    }
+    // 分数のまわりの余分な空白を整える（「(- 3/4 )」→「(-3/4)」）
+    function pdfTidyMath(t) {
+      return t.replace(/\(\s+/g, '(').replace(/\s+\)/g, ')').replace(/([(×÷]|^)\s*([-−])\s+(?=\(?\d)/g, '$1$2').replace(/=\s*([-−])\s+(?=\(?\d)/g, '= $1').replace(/\s{2,}/g, ' ').trim();
+    }
+
+    // 「番号＋答え」を何列にも並べた表（模範解答など）を、1問1行に直す。
+    // 番号が上から1ずつ増える列を見つけ、答えの文字・分数の上下・折り返しを、番号ごとに集める
+    function pdfNumberedCells(arr) {
+      const cand = arr.filter(i => /^\d{1,3}$/.test(i.s.trim()));
+      if (cand.length < 12) return null;
+      const byX = cand.slice().sort((a, b) => a.x - b.x);
+      const clusters = [];
+      byX.forEach(i => {
+        const c = clusters[clusters.length - 1];
+        if (c && i.x - c[c.length - 1].x <= 6) c.push(i); else clusters.push([i]);
+      });
+      const cols = [];
+      clusters.forEach(c => {
+        if (c.length < 8) return;
+        const s = c.slice().sort((a, b) => b.y - a.y);
+        let seq = 0;
+        for (let k = 1; k < s.length; k++) if (Number(s[k].s) === Number(s[k - 1].s) + 1) seq++;
+        if (seq >= (s.length - 1) * 0.7) cols.push({ x: Math.min(...s.map(i => i.x)), markers: s });
+      });
+      if (cols.length < 2) return null;
+      cols.sort((a, b) => a.x - b.x);
+
+      // 各番号の「持ち場」は、上下の番号との中間まで（番号は行の真ん中にそろっていることが多い）
+      const markerSet = new Set();
+      cols.forEach(c => c.markers.forEach(m => markerSet.add(m)));
+      const owned = new Map();
+      cols.forEach(c => c.markers.forEach(m => owned.set(m, [])));
+      const outside = [];
+      arr.forEach(it => {
+        if (markerSet.has(it)) return;
+        let k = -1;
+        cols.forEach((c, j) => { if (it.x >= c.x - 6) k = j; });
+        if (k < 0) { outside.push(it); return; }
+        const ms = cols[k].markers;
+        const topEdge = ms[0].y + (ms.length > 1 ? (ms[0].y - ms[1].y) / 2 : 10);
+        if (it.y > topEdge) { outside.push(it); return; }
+        let owner = null;
+        for (let j = 0; j < ms.length; j++) {
+          const lower = j + 1 < ms.length ? (ms[j].y + ms[j + 1].y) / 2 : ms[j].y - 45;
+          if (it.y >= lower) { owner = ms[j]; break; }
+        }
+        if (!owner) { outside.push(it); return; }
+        owned.get(owner).push(it);
+      });
+
+      const wrapNum = t => (/.[+\-−±×÷]/.test(t) ? `(${t})` : t);
+      const entryText = (m, its) => {
+        if (!its.length) return '';
+        const small = its.filter(i => i.h < m.h - 0.8);
+        const raised = small.filter(i => i.y > m.y + 1.5), lowered = small.filter(i => i.y < m.y - 1.5);
+        const parts = [];
+        let frac = null;
+        const lo = a => Math.min(...a.map(i => i.x)), hi = a => Math.max(...a.map(i => i.x + i.w));
+        if (raised.length && lowered.length && lo(raised) < hi(lowered) && lo(lowered) < hi(raised)) {
+          const x0 = Math.min(lo(raised), lo(lowered)), x1 = Math.max(hi(raised), hi(lowered));
+          frac = { x: x0, w: x1 - x0, y: (raised[0].y + lowered[0].y) / 2, h: raised[0].h, s: `${wrapNum(pdfJoinItems(raised))}/${wrapNum(pdfJoinItems(lowered))}`, frac: true };
+        }
+        its.forEach(i => { if (!frac || (raised.indexOf(i) < 0 && lowered.indexOf(i) < 0)) parts.push(i); });
+        if (frac) parts.push(frac);
+        // 本文の高さ（行）ごとに集め、上付き文字などは近い行に入れる
+        const body = parts.filter(p => p.frac || p.h >= m.h - 0.8).sort((a, b) => b.y - a.y);
+        const lines = [];
+        body.forEach(p => {
+          const l = lines.find(L => Math.abs(L.y - p.y) <= 2.6);
+          if (l) l.parts.push(p); else lines.push({ y: p.y, parts: [p] });
+        });
+        parts.filter(p => !p.frac && p.h < m.h - 0.8).forEach(p => {
+          let best = null;
+          lines.forEach(L => { if (!best || Math.abs(L.y - p.y) < Math.abs(best.y - p.y)) best = L; });
+          if (best && Math.abs(best.y - p.y) <= 7) best.parts.push(p); else lines.push({ y: p.y, parts: [p] });
+        });
+        lines.sort((a, b) => b.y - a.y);
+        return lines.map(L => {
+          const ps = L.parts.slice().sort((a, b) => a.x - b.x);
+          let out = '', prevEnd = null, prevFrac = false;
+          ps.forEach(p => {
+            const gap = prevEnd === null ? 0 : p.x - prevEnd;
+            const afterSign = p.frac && /[-−+]$/.test(out);   // 「-」の直後の分数は、符号としてくっつける
+            if (prevEnd !== null && !afterSign && gap > p.h * 0.25 && ((p.frac || prevFrac) || (/[A-Za-z0-9]$/.test(out) && /^[A-Za-z0-9]/.test(p.s)))) out += ' ';
+            out += p.s;
+            prevEnd = p.x + p.w;
+            prevFrac = !!p.frac;
+          });
+          return pdfTidyMath(fixRadicals(out));
+        }).filter(Boolean).join(' ').trim();
+      };
+
+      const entries = [];
+      let filled = 0, total = 0;
+      cols.forEach(c => c.markers.forEach(m => {
+        const t = entryText(m, owned.get(m));
+        total++; if (t) filled++;
+        entries.push(t ? `${m.s} ${t}` : m.s);
+      }));
+      if (filled < total * 0.5) return null;   // 答えが入っていない表（番号だけの解答用紙など）は、そのまま行ごとに読む
+
+      const head = pdfGroupRows(outside).map(r => pdfJoinItems(r.items)).filter(Boolean);
+      return [...head, ...entries];
+    }
+
+    // 2段組の文章（左の列→右の列の順に読むページ）の、列の境目を探す
+    function pdfFindColumnCut(rows) {
+      if (rows.length < 8) return null;
+      let minX = Infinity, maxX = -Infinity;
+      rows.forEach(r => r.items.forEach(i => { minX = Math.min(minX, i.x); maxX = Math.max(maxX, i.x + i.w); }));
+      const W = maxX - minX;
+      if (!(W > 200)) return null;
+      const lo = Math.floor(minX);
+      const occ = new Array(Math.ceil(maxX) - lo + 2).fill(0);
+      rows.forEach(r => {
+        const seen = new Set();
+        r.items.forEach(i => { for (let x = Math.floor(i.x); x <= Math.ceil(i.x + i.w); x++) seen.add(x - lo); });
+        seen.forEach(b => { if (b >= 0 && b < occ.length) occ[b]++; });
+      });
+      const limit = Math.max(1, Math.floor(rows.length * 0.06));
+      const from = Math.floor(minX + W * 0.3) - lo, to = Math.ceil(maxX - W * 0.3) - lo;
+      let best = null, start = null;
+      for (let b = from; b <= to + 1; b++) {
+        const zero = b <= to && occ[b] <= limit;
+        if (zero && start === null) start = b;
+        if (!zero && start !== null) {
+          if (b - 1 - start >= 7 && (!best || b - 1 - start > best.b - best.a)) best = { a: start, b: b - 1 };
+          start = null;
+        }
+      }
+      if (!best) return null;
+      const cutL = best.a + lo, cutR = best.b + lo, mid = (cutL + cutR) / 2;
+      if (cutL - minX < W * 0.2 || maxX - cutR < W * 0.2) return null;   // 片方の列が細すぎる
+      let both = 0, numbered = 0;
+      rows.forEach(r => {
+        const L = r.items.filter(i => i.x + i.w / 2 < mid), R = r.items.filter(i => i.x + i.w / 2 >= mid);
+        if (L.length && R.length) {
+          both++;
+          if (/^\d{1,3}\s/.test(pdfJoinItems(L)) && /^\d{1,3}\s/.test(pdfJoinItems(R))) numbered++;
+        }
+      });
+      if (both < Math.max(3, rows.length * 0.25)) return null;   // 両方の列が埋まっている行が少ない＝2段組ではない
+      if (numbered > both * 0.6) return null;                    // 数字で始まる表の行は、2段組の文章として扱わない
+      return { cutL, cutR, mid };
+    }
+
     function pdfTextToLines(items) {
-      const arr = items.filter(i => i.str && i.str.length).map(i => ({
+      let arr = items.filter(i => i.str && i.str.length).map(i => ({
         s: i.str, x: i.transform[4], y: i.transform[5], w: i.width || 0,
         h: Math.abs(i.transform[3]) || i.height || 10
       }));
-      arr.sort((a, b) => (b.y - a.y) || (a.x - b.x));
-      const lines = [];
-      arr.forEach(it => {
-        const last = lines[lines.length - 1];
-        if (last && Math.abs(last.y - it.y) <= Math.max(2, Math.min(last.h, it.h) * 0.5)) last.items.push(it);
-        else lines.push({ y: it.y, h: it.h, items: [it] });
+      arr = pdfMergeMath(arr);
+      const table = pdfNumberedCells(arr);
+      if (table) return table;
+      const rows = pdfGroupRows(arr);
+      const cut = pdfFindColumnCut(rows);
+      if (!cut) return rows.map(r => pdfJoinItems(r.items)).filter(Boolean);
+      // 「(1) (2)」「(3) (4)」のように、左右が1行ずつ対になった表は行ごとに、新聞のような段組は列ごとに読む
+      const starts = t => /^\s*(?:\(\s*\d{1,3}\s*\)|問\s*\d|[0-9０-９]{1,3}\s*[\.．)）]\s)/.test(t);
+      const numOf = t => { const m = t.match(/\d{1,3}/); return m ? Number(m[0]) : NaN; };
+      let pairs = 0, seq = 0;
+      rows.forEach(r => {
+        const lt = pdfJoinItems(r.items.filter(i => i.x + i.w / 2 < cut.mid)), rt = pdfJoinItems(r.items.filter(i => i.x + i.w / 2 >= cut.mid));
+        if (lt && rt && starts(lt) && starts(rt)) { pairs++; if (numOf(rt) === numOf(lt) + 1) seq++; }
       });
-      return lines.map(l => {
-        l.items.sort((a, b) => a.x - b.x);
-        let out = '';
-        let prevEnd = null;
-        l.items.forEach(it => {
-          if (prevEnd !== null && it.x - prevEnd > it.h * 0.25 && /[A-Za-z0-9]$/.test(out) && /^[A-Za-z0-9]/.test(it.s)) out += ' ';
-          out += it.s;
-          prevEnd = it.x + it.w;
-        });
-        return fixRadicals(out).trim();
-      }).filter(Boolean);
+      const rowMajor = pairs >= 3 && seq >= pairs * 0.6;
+      const lines = [];
+      let left = [], right = [];
+      const flush = () => { lines.push(...left, ...right); left = []; right = []; };
+      const heading = /^\s*(?:[0-9０-９]{1,2}\s*[\.．]\s*\S|【|大問|第\s*[0-9０-９一二三四五六七八九十]+\s*問|[一二三四五六七八九十]+\s*[、．.]\s*\S)/;
+      rows.forEach(r => {
+        const L = r.items.filter(i => i.x + i.w / 2 < cut.mid), R = r.items.filter(i => i.x + i.w / 2 >= cut.mid);
+        const spans = r.items.some(i => i.x < cut.cutL && i.x + i.w > cut.cutR);
+        if (spans || (L.length && !R.length && heading.test(pdfJoinItems(L)))) {
+          flush();
+          const t = pdfJoinItems(r.items);
+          if (t) lines.push(t);
+          return;
+        }
+        const lt = pdfJoinItems(L), rt = pdfJoinItems(R);
+        if (rowMajor && ((lt && starts(lt)) || (rt && starts(rt)))) flush();
+        if (lt) left.push(lt);
+        if (rt) right.push(rt);
+      });
+      flush();
+      return lines;
     }
 
     // ---------- PDFの中に埋め込まれた図・グラフ・写真の位置を調べる ----------
@@ -1999,13 +2231,47 @@
     }
     function parseQuestionsFromText(rawText) {
       const normalized = normalizeOcrText(rawText);
+      // 「(1) … (2) …」のように、1行に連番の設問が並んでいるとき（2段組をそのまま貼り付けた場合など）は、1つずつの行に分ける
+      const splitInline = t => {
+        if (!/^\(\s*[0-9]{1,3}\s*\)/.test(t)) return [t];
+        const re = /\(\s*([0-9]{1,3})\s*\)/g;
+        let m, prev = null;
+        const cuts = [];
+        while ((m = re.exec(t))) {
+          const n = parseInt(m[1], 10);
+          if (m.index === 0) { prev = n; continue; }
+          if (prev !== null && n === prev + 1 && !/[A-Za-z0-9)）]$/.test(t.slice(0, m.index).trimEnd())) { cuts.push(m.index); prev = n; }
+        }
+        if (!cuts.length) return [t];
+        const out = [];
+        let st = 0;
+        cuts.forEach(c => { out.push(t.slice(st, c).trim()); st = c; });
+        out.push(t.slice(st).trim());
+        return out;
+      };
       // 解答欄が1行に横並びのとき（問1（3点） 問2（3点） …）は、1つずつの行に分ける
       const lines = normalized.split(/\r?\n/).flatMap(l => {
         const t = l.trim();
         const marks = t.match(/問\s*[0-9０-９]+\s*[（(]\s*[0-9０-９]+\s*点\s*[）)]/g) || [];
-        if (marks.length < 2) return [t];
+        if (marks.length < 2) return splitInline(t);
         return t.split(/(?=問\s*[0-9０-９]+\s*[（(]\s*[0-9０-９]+\s*点\s*[）)])/).map(x => x.trim());
       }).filter(Boolean);
+
+      // 解答用紙が「1 26 51 76」のように番号だけを並べた表のとき、その番号を解答欄として数える
+      const gridIdx = new Set();
+      {
+        const cand = [];
+        lines.forEach((l, i) => {
+          if (!/^[0-9]{1,3}(?:\s+[0-9]{1,3})+$/.test(l)) return;
+          const ns = l.split(/\s+/).map(Number);
+          if (ns.every((n, k) => k === 0 || n - ns[k - 1] === ns[1] - ns[0]) && ns[1] - ns[0] >= 1) cand.push(i);
+        });
+        if (cand.length >= 3) {
+          let inc = 0;
+          for (let k = 1; k < cand.length; k++) if (Number(lines[cand[k]].split(/\s+/)[0]) === Number(lines[cand[k - 1]].split(/\s+/)[0]) + 1) inc++;
+          if (inc >= (cand.length - 1) * 0.6) cand.forEach(i => gridIdx.add(i));
+        }
+      }
       const items = [];
       let currentSectionNum = 1;
       let currentSection = '大問1';
@@ -2015,8 +2281,17 @@
       for (let idx = 0; idx < lines.length; idx++) {
         const line = lines[idx];
 
+        if (gridIdx.has(idx)) {
+          line.split(/\s+/).forEach(tok => {
+            const num = Number(tok);
+            items.push({ key: `${currentSection}-問${num}`, section: currentSection, num, raw: `問${num}`, points: defaultSectionPoints, choices: [] });
+          });
+          continue;
+        }
+
         const secMatch = line.match(/(?:【|\[)?\s*(?:大問|第)\s*([0-9一二三四五六七八九十]+)\s*(?:問|】|】)?/);
-        const topNumSecMatch = line.match(/^([0-9]+)\s*[\.．]\s*(?:次の|日本|以下|計算|英語|理科|社会|国語|数学)/);
+        const topNumSecMatch = line.match(/^([0-9]+)\s*[\.．]\s*(?:次の|日本|以下|計算|英語|理科|社会|国語|数学)/)
+          || line.match(/^([0-9]{1,2})\s*[\.．]\s*\S.*[（(]\s*[0-9]+\s*[〜~～ー-]\s*[0-9]+\s*[）)]\s*$/);   // 「1. 正負の数（1〜30）」のような範囲つきの見出し
 
         if (secMatch && (line.includes('大問') || /^【.*】/.test(line) || /^第[0-9一二三四五]+問/.test(line))) {
           const parsedSec = kanjiToNum(secMatch[1]);
@@ -2057,7 +2332,7 @@
           const key = `${currentSection}-問${num}`;
 
           let points = defaultSectionPoints;
-          const ptMatch = line.match(/(?:配点)?\s*([0-9]+)\s*点/);
+          const ptMatch = line.match(/(?:配点)?\s*([0-9]+)\s*点(?!\s*[A-Za-zＡ-Ｚａ-ｚ(（])/);   // 直後が英字・括弧なら、点の数（「2点 (-1, 5)」「3点A, B, C」）とみなす
           if (ptMatch && !line.includes('各')) {
             points = parseInt(ptMatch[1], 10);
           }
@@ -2226,7 +2501,7 @@
     }
 
     const PATTERN_RULES = [
-      { re: /答(?:え|なさい)?なさ(?![いそ])|(?:選び|求め|書き|述べ|説明し|示し)なさ(?![いそ])/g, fix: null, cat: CAT.TYPO, level: 'error', tier: 'core', msg: '「なさい」の語尾が欠けている可能性があります。' },
+      { re: /答(?:え|なさい)?なさ(?![いそ]|$)|(?:選び|求め|書き|述べ|説明し|示し)なさ(?![いそ]|$)/g, fix: null, cat: CAT.TYPO, level: 'error', tier: 'core', msg: '「なさい」の語尾が欠けている可能性があります。' },
       { re: /(?<=[一-龥ァ-ヶ])([をがにでのは])\1(?!き)/g, fix: m => m[0], cat: CAT.TYPO, level: 'warn', tier: 'core', msg: '助詞が重複しています。' },
       { re: /([ぁ-ん一-龥])\1{2,}/g, fix: null, cat: CAT.TYPO, level: 'warn', tier: 'core', msg: '同じ文字が3回以上連続しています。入力ミスでないか確認してください。' },
       { re: /。。+/g, fix: '。', cat: CAT.PUNCT, level: 'error', tier: 'core', msg: '句点が重複しています。' },
@@ -2424,7 +2699,37 @@
       const lines = text.split(/\r?\n/);
       BRACKET_GROUPS.forEach(g => {
         let totalO = 0, totalC = 0, perLineFound = false;
+        // 行の終わりで開いたままの括弧が、次の行で閉じているとき（文が折り返されただけ）は、間違いに数えない
+        const startsItem = t => /^\s*(?:\(\s*\d+\s*\)|（\s*\d+\s*）|問\s*[0-9０-９]|[0-9０-９]+\s*[\.．]\s|【)/.test(t);
+        const stat = lines.map(raw => {
+          const line = raw.replace(/^\s*(?:[（(]\s*[0-9０-９]+\s*[)）]|[0-9０-９a-zA-Zａ-ｚＡ-Ｚァ-ヶ一二三四五六七八九十]{1,3}[)）])/, '');
+          let depth = 0, o = 0, c = 0, reversed = false;
+          for (const ch of line) {
+            if (g.open.includes(ch)) { depth++; o++; }
+            else if (g.close.includes(ch)) { depth--; c++; if (depth < 0) reversed = true; }
+          }
+          return { o, c, reversed };
+        });
+        const statRaw = lines.map(raw => {   // 折り返し行の先頭の「ジ）」も、閉じ括弧として数える
+          let o = 0, c = 0;
+          for (const ch of raw) { if (g.open.includes(ch)) o++; else if (g.close.includes(ch)) c++; }
+          return { o, c };
+        });
+        const joined = new Set();
+        stat.forEach((st, i) => {
+          if (!g.perLine || st.reversed || st.o <= st.c || joined.has(i)) return;
+          let bal = st.o - st.c;
+          const span = [i];
+          for (let j = i + 1; j < lines.length && j <= i + 3 && bal > 0; j++) {
+            if (startsItem(lines[j])) break;
+            bal += statRaw[j].o - statRaw[j].c;
+            if (bal < 0) break;
+            span.push(j);
+          }
+          if (bal === 0 && span.length > 1) span.forEach(k => joined.add(k));
+        });
         lines.forEach((raw, i) => {
+          if (joined.has(i)) { const st = statRaw[i]; totalO += st.o; totalC += st.c; return; }
           // 「ア)」「1)」のような行頭の項目記号の閉じ括弧は数えない
           const line = raw.replace(/^\s*[0-9０-９a-zA-Zａ-ｚＡ-Ｚァ-ヶ一二三四五六七八九十]{1,3}[)）]/, '');
           let depth = 0, o = 0, c = 0, reversed = false;
@@ -2509,7 +2814,7 @@
         let m;
 
         // 四則演算
-        const reA = /(?<![\d.+\-×÷*\/＋－−A-Za-z])(\d+(?:\.\d+)?)\s*([+＋\-－−×÷*\/])\s*(\d+(?:\.\d+)?)\s*[=＝]\s*(\d+(?:\.\d+)?)(?![\d.])/g;
+        const reA = /(?<![\d.+\-×÷*\/＋－−A-Za-z^])(\d+(?:\.\d+)?)\s*([+＋\-－−×÷*\/])\s*(\d+(?:\.\d+)?)\s*[=＝]\s*(\d+(?:\.\d+)?)(?![\d.])/g;
         while ((m = reA.exec(line))) {
           const a = parseFloat(m[1]), b = parseFloat(m[3]), claimed = parseFloat(m[4]);
           const op = m[2];
@@ -3189,6 +3494,109 @@
       return issues;
     }
 
+    // ① の2：代入による検算。式の変形（計算・展開・因数分解）は文字に数を代入して、方程式の解は式に代入して確かめる
+    function verifyBySubstitution(qItems, keyItems, skipKeys) {
+      const issues = [];
+      const SAMPLES = [
+        { a: 2, b: 3, c: 5, m: 7, n: 4, p: 3, q: 2, r: 5, s: 6, t: 3, x: 2, y: 3, z: 5 },
+        { a: -3, b: 2, c: 4, m: -2, n: 5, p: 7, q: -3, r: 2, s: -4, t: 5, x: -3, y: 5, z: -2 },
+        { a: 5, b: -4, c: 2, m: 3, n: -6, p: 2, q: 5, r: -3, s: 7, t: -2, x: 5, y: -2, z: 3 }
+      ];
+      const subst = (t, vals) => {
+        let bad = false;
+        const r = t.replace(/[a-z]/g, ch => { const v = vals[ch]; if (v === undefined) { bad = true; return '?'; } return `(${v})`; });
+        return bad ? null : r;
+      };
+      const show = t => t.replace(/\*/g, '×').replace(/\//g, '÷');
+      const exprOf = raw => stripQuestionPrefix(raw)
+        .replace(/^(?:次の)?(?:式|計算)を?/, '')
+        .replace(/\s*(?:を|について)?\s*(?:展開|因数分解|整理|計算|簡単に|工夫して計算|簡単にして計算)?\s*(?:しなさい|せよ)[。.]*\s*$/, '')
+        .trim();
+      const isExpr = t => /^[0-9a-z.()+\-*\/^\s]+$/.test(t) && /[+\-*\/^()]/.test(t.replace(/^\s*-/, '')) && /[0-9a-z]/.test(t);
+
+      // 方程式（連立・「A = B = C」の形を含む）を「左辺・右辺」の組にする
+      const equationsOf = raw => {
+        const m = /方程式\s*(.+?)\s*(?:を|について)\s*解/.exec(stripQuestionPrefix(raw));
+        if (!m) return null;
+        const pieces = m[1].replace(/[{}｛｝]/g, '').split(/\s*[,，、]\s*/).filter(Boolean);
+        const eqs = [];
+        for (const pc of pieces) {
+          if (!/^[0-9a-z.()+\-*\/^=\s]+$/.test(pc)) return null;
+          const parts = pc.split('=').map(s => s.trim());
+          if (parts.length < 2 || parts.some(s => !s)) return null;
+          for (let i = 0; i + 1 < parts.length; i++) eqs.push([parts[i].replace(/\s+/g, ''), parts[i + 1].replace(/\s+/g, '')]);
+        }
+        return eqs.length ? eqs : null;
+      };
+      // 模範解答（「x = 4, y = 3」「x = 3, 4」）を、代入する値の組にする
+      const solutionsOf = raw => {
+        const t = stripQuestionPrefix(raw).trim();
+        if (/[±√π]/.test(t)) return null;
+        const m = /^([a-z])\s*=\s*(-?\d+(?:\.\d+)?(?:\s*\/\s*\d+)?(?:\s*[,、]\s*-?\d+(?:\.\d+)?(?:\s*\/\s*\d+)?)+)$/.exec(t);
+        if (m) return m[2].split(/\s*[,、]\s*/).map(v => ({ [m[1]]: v.replace(/\s+/g, '') }));
+        const pairs = [...t.matchAll(/([a-z])\s*=\s*(-?\d+(?:\.\d+)?(?:\s*\/\s*\d+)?)/g)];
+        if (!pairs.length) return null;
+        const asg = {};
+        for (const p of pairs) { if (asg[p[1]] !== undefined) return null; asg[p[1]] = p[2].replace(/\s+/g, ''); }
+        return [asg];
+      };
+
+      qItems.forEach(q => {
+        if (skipKeys.has(q.key)) return;
+        const k = keyItems.find(x => x.key === q.key);
+        if (!k) return;
+
+        // 式の変形：文字に数を代入して、問題の式と模範解答の式の値を比べる
+        const qe = exprOf(q.raw);
+        if (isExpr(qe)) {
+          let ka = stripQuestionPrefix(k.raw).trim();
+          if (ka.includes('=')) ka = ka.slice(ka.lastIndexOf('=') + 1).trim();
+          if (!isExpr(ka) && !/^[-+]?\d+(?:\.\d+)?(?:\s*\/\s*\d+)?$/.test(ka)) return;
+          const qn = qe.replace(/\s+/g, ''), an = ka.replace(/\s+/g, '');
+          for (const vals of SAMPLES) {
+            const sq = subst(qn, vals), sa = subst(an, vals);
+            if (sq === null || sa === null) return;
+            const vq = evalNumeric(sq), va = evalNumeric(sa);
+            if (!vq || !va) continue;
+            if (!qEq(vq, va)) {
+              const used = [...new Set((qn + an).match(/[a-z]/g) || [])];
+              const how = used.length ? `に ${used.map(c => `${c}=${vals[c]}`).join('、')} を代入すると` : 'を計算すると';
+              issues.push({
+                level: 'error', category: '模範解答の検算（代入）',
+                detail: used.length
+                  ? `「${q.key}」の式${how} ${qFmt(vq)} ですが、模範解答（${show(an)}）では ${qFmt(va)} になります。式の変形か答えに誤りがないか確認してください。（式：${show(qn)}）`
+                  : `「${q.key}」の式を計算すると ${qFmt(vq)} ですが、模範解答は ${qFmt(va)} です。（式：${show(qn)}）`
+              });
+              return;
+            }
+          }
+          return;
+        }
+
+        // 方程式：模範解答の値を式に代入して、等式が成り立つか確かめる
+        const eqs = equationsOf(q.raw);
+        if (!eqs) return;
+        const sols = solutionsOf(k.raw);
+        if (!sols) return;
+        for (const asg of sols) {
+          for (const [l, r] of eqs) {
+            const sl = subst(l, asg), sr = subst(r, asg);
+            if (sl === null || sr === null) continue;
+            const vl = evalNumeric(sl), vr = evalNumeric(sr);
+            if (!vl || !vr) continue;
+            if (!qEq(vl, vr)) {
+              issues.push({
+                level: 'error', category: '模範解答の検算（代入）',
+                detail: `「${q.key}」の模範解答（${Object.entries(asg).map(([v, val]) => `${v} = ${val}`).join('、')}）を式 ${show(l)} = ${show(r)} に代入すると、左辺が ${qFmt(vl)}、右辺が ${qFmt(vr)} になり、等式が成り立ちません。`
+              });
+              return;
+            }
+          }
+        }
+      });
+      return issues;
+    }
+
     // ② 正答の偏り
     function checkAnswerBias(keyItems) {
       const syms = [];
@@ -3216,7 +3624,7 @@
     }
 
     // ③ 文書内の「ゆれ」検出（問題用紙・解答用紙・模範解答の語を横断して比べる）
-    const CONTRAST_SETS = ['一二三四五六七八九十百千万', '東西南北', '上下左右前後', '大中小', '男女', '春夏秋冬', '長正', '内外', '父母兄弟姉妹',
+    const CONTRAST_SETS = ['一二三四五六七八九十百千万多何', '東西南北', '上下左右前後', '大中小', '男女', '春夏秋冬', '長正', '内外', '父母兄弟姉妹',
       '有無', '増減', '開閉', '強弱', '高低', '遠近', '新旧', '表裏', '昼夜', '陸海', '入出', '加減乗除', '鋭鈍', '正負', '奇偶', '縦横',
       '甲乙丙丁', '昭平令', '金銀銅', '熱冷温寒', '軽重', '公私', '官民', '朝夕', '勝敗', '善悪', '因果', '自他', '単複', '日月火水木金土', '酸塩'];
     const sameContrast = (a, b) => CONTRAST_SETS.some(s => s.includes(a) && s.includes(b));
@@ -3415,6 +3823,17 @@
         const issues = [];
         state.marks = { textQ: [], textA: [], ocrQ: [], ocrA: [] };
 
+        // サンプル用の画像が残ったままだと、実際のテストの結果にサンプルの内容が混ざる
+        {
+          const names = [...state.questionImages, ...state.answerImages, ...state.keyImages].map(i => i.name).filter(n => /^sample-(question|answer)\.png$/.test(n));
+          if (names.length) {
+            issues.push({
+              level: 'warn', score: 3, category: 'サンプル画像が残っています',
+              detail: `サンプル用の画像（${[...new Set(names)].join('・')}）が読み込まれたままです。サンプルの内容が結果に混ざるため、画像を削除するか「すべてクリア」を押してから、もう一度実行してください。`
+            });
+          }
+        }
+
         // 1. 漢字・送りがな・誤字脱字・括弧チェック
         //    入力テキストと画像ごとの読み取り結果を別々に校正し、行番号と元の場所を対応させる
         let tokenizer = null;
@@ -3559,7 +3978,7 @@
             const secQs = qItems.filter(i => i.section === sec);
             const seen = new Set();
             let prevNum = startPrev[sec] || 0;
-            secQs.forEach(item => {
+            secQs.forEach((item, qi) => {
               if (seen.has(item.num)) {
                 issues.push({
                   level: 'error',
@@ -3567,15 +3986,25 @@
                   detail: `問題用紙の「${sec} 問${item.num}」が重複しています。`
                 });
               } else if (item.num > prevNum + 1) {
-                const missing = [];
+                const later = new Set(secQs.slice(qi + 1).map(x => x.num));
+                const missing = [], moved = [];
                 for (let m = prevNum + 1; m < item.num; m++) {
-                  missing.push(`問${m}`);
+                  (later.has(m) ? moved : missing).push(`問${m}`);
                 }
-                issues.push({
-                  level: 'error',
-                  category: '設問番号の抜け・飛び',
-                  detail: `問題用紙の「${sec}」で ${missing.join('・')} が抜けています（${prevNum === 0 ? '先頭' : '問' + prevNum}の次に問${item.num}が出現）。`
-                });
+                if (missing.length) {
+                  issues.push({
+                    level: 'error',
+                    category: '設問番号の抜け・飛び',
+                    detail: `問題用紙の「${sec}」で ${missing.join('・')} が抜けています（${prevNum === 0 ? '先頭' : '問' + prevNum}の次に問${item.num}が出現）。`
+                  });
+                }
+                if (moved.length) {
+                  issues.push({
+                    level: 'warn',
+                    category: '設問番号の順序の入れ替わり',
+                    detail: `問題用紙の「${sec}」で、${moved.join('・')} が 問${item.num} より後ろに出てきます（抜けではなく、並びが入れ替わっています）。ページの切れ目や段組で順序が崩れていないか確認してください。`
+                  });
+                }
               }
               seen.add(item.num);
               prevNum = Math.max(prevNum, item.num);
@@ -3686,7 +4115,9 @@
         if (el.chkConsistency.checked && keyText.trim()) {
           const keyNorm = normalizeKeyText(keyText).replace(/(問\s*[0-9０-９]+)\s*[:：=＝]\s*/g, '$1 ');
           const keyItems = alignSections(qItems, parseQuestionsFromText(keyNorm), keyNorm);
-          issues.push(...verifyCalculations(qItems, keyItems), ...checkAnswerBias(keyItems));
+          const calcIssues = verifyCalculations(qItems, keyItems);
+          const flagged = new Set(calcIssues.map(i => (/「([^」]+)」/.exec(i.detail) || [])[1]).filter(Boolean));
+          issues.push(...calcIssues, ...verifyBySubstitution(qItems, keyItems, flagged), ...checkAnswerBias(keyItems));
           const noKey = qItems.filter(q => !keyItems.some(k => k.key === q.key));
           if (noKey.length) {
             issues.push({
@@ -3741,7 +4172,9 @@
             });
           }
 
-          if (qItems.length > 0 && sumQ !== targetTotal) {
+          // 配点がほとんど書かれていないテスト（「100問・100点」など）では、合計の食い違いは「配点未記載」の指摘に任せる
+          const havePtQ = qItems.filter(i => i.points !== null).length, havePtA = aItems.filter(i => i.points !== null).length;
+          if (qItems.length > 0 && havePtQ >= qItems.length * 0.5 && sumQ !== targetTotal) {
             const diff = targetTotal - sumQ;
             issues.push({
               level: 'warn',
@@ -3749,7 +4182,7 @@
               detail: `目標合計点は ${targetTotal}点${usedStated ? "（問題用紙の満点の記載を使用）" : ""} ですが、問題用紙から読み取れた配点の合計は ${sumQ}点 です（${diff > 0 ? diff + '点不足' : Math.abs(diff) + '点超過'}）。`
             });
           }
-          if (aItems.length > 0 && sumA !== targetTotal) {
+          if (aItems.length > 0 && havePtA >= aItems.length * 0.5 && sumA !== targetTotal) {
             const diff = targetTotal - sumA;
             issues.push({
               level: 'warn',
@@ -3760,8 +4193,9 @@
 
           const qt = sectionTotals(qItems);
           const at = sectionTotals(aItems);
+          const secHasPt = (items, sec) => items.some(i => i.section === sec && i.points !== null);
           Object.keys(qt).forEach(sec => {
-            if (at[sec] !== undefined && at[sec] !== qt[sec]) {
+            if (at[sec] !== undefined && secHasPt(qItems, sec) && secHasPt(aItems, sec) && at[sec] !== qt[sec]) {
               issues.push({
                 level: 'warn',
                 category: '大問ごとの配点合計の不一致',
@@ -4164,7 +4598,8 @@
       numeric: document.getElementById('export-numeric'),
       preview: document.getElementById('export-preview'),
       download: document.getElementById('export-download'),
-      copy: document.getElementById('export-copy')
+      copy: document.getElementById('export-copy'),
+      fill: document.getElementById('export-fill')
     };
     const exState = { rows: [], orphans: [], target: null, hasAnyKey: false };
 
@@ -4231,6 +4666,7 @@
       const can = exState.rows.length > 0 && cols.length > 0;
       ex.download.disabled = !can;
       ex.copy.disabled = !can;
+      ex.fill.disabled = !exState.rows.some(r => r.points === null);
     }
 
     function exRenderTable() {
@@ -4343,6 +4779,23 @@
       } catch (e) {
         showToast('コピーできませんでした。ダウンロードをお使いください');
       }
+    });
+
+    // 配点がどこにも書かれていないテスト（「100問・100点」など）のために、残りの点数を未設定の設問へ等分する
+    ex.fill.addEventListener('click', () => {
+      const miss = exState.rows.filter(r => r.points === null);
+      if (!miss.length) { showToast('配点が未設定の設問はありません'); return; }
+      const target = exState.target || (parseInt(el.inputScore.value, 10) || 100);
+      const rest = target - exState.rows.reduce((s, r) => s + (r.points || 0), 0);
+      const each = rest / miss.length;
+      if (rest <= 0 || !isFinite(each) || Math.round(each * 2) / 2 !== each) {
+        showToast(`残り${rest}点を${miss.length}問で等分できません。配点は表に入力してください`);
+        return;
+      }
+      miss.forEach(r => { r.points = each; });
+      exRenderTable();
+      exRefresh();
+      showToast(`未設定の${miss.length}問に ${each}点ずつ入れました（合計${target}点）`);
     });
 
     exLoadCfg();

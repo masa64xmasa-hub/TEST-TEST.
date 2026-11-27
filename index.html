@@ -3838,7 +3838,7 @@
       const sc = Math.min(1, 1000 / W0);
       const W = Math.max(1, Math.round(W0 * sc)), H = Math.max(1, Math.round(H0 * sc));
       const N = W * H;
-      const gray = new Uint8Array(N), color = new Uint8Array(N), vivid = new Uint8Array(N), ink = new Uint8Array(N), nonwhite = new Uint8Array(N);
+      const gray = new Uint8Array(N), color = new Uint8Array(N), tint = new Uint8Array(N), vivid = new Uint8Array(N), ink = new Uint8Array(N), nonwhite = new Uint8Array(N);
       // 縮小しながら、ブロックの平均を取る
       for (let y = 0; y < H; y++) {
         const y0 = Math.floor(y / sc), y1 = Math.min(H0, Math.max(y0 + 1, Math.floor((y + 1) / sc)));
@@ -3852,6 +3852,7 @@
           ink[i] = gr < 185 ? 1 : 0;
           nonwhite[i] = gr < 238 ? 1 : 0;
           color[i] = (mx - mn > 36 && gr < 242) ? 1 : 0;
+          tint[i] = (mx - mn > 14 && gr < 247) ? 1 : 0;   // 紙の上の、淡い着色（グラフの背景パネルなど）
           vivid[i] = (mx > 0 && (mx - mn) / mx > 0.35 && gr < 215) ? 1 : 0;   // 棒グラフ・折れ線のような、鮮やかな色
         }
       }
@@ -3945,14 +3946,14 @@
       const pageArea = N;
       const minArea = pageArea * 0.005;
       const found = [];
-      const photoLike = s => s.nonwhiteFrac >= 0.55 && s.flatFrac < 0.6 && s.textFrac < 0.9;   // 面が連続階調で、紙の大部分を占める＝写真
+      const photoLike = s => s.nonwhiteFrac >= 0.55 && s.flatFrac < 0.6 && s.textFrac < 0.75;   // 面が連続階調で、紙の大部分を占める＝写真
       const inside = (a, b) => { // aがbにどれだけ含まれるか
         const x0 = Math.max(a.x, b.x), y0 = Math.max(a.y, b.y), x1 = Math.min(a.x + a.w, b.x + b.w), y1 = Math.min(a.y + a.h, b.y + b.h);
         return x1 > x0 && y1 > y0 ? ((x1 - x0) * (y1 - y0)) / (a.w * a.h) : 0;
       };
       const stats = box => {
-        let col = 0, viv = 0, nw = 0, area = box.w * box.h;
-        for (let y = box.y; y < box.y + box.h; y++) for (let x = box.x; x < box.x + box.w; x++) { const i = y * W + x; col += color[i]; viv += vivid[i]; nw += nonwhite[i]; }
+        let col = 0, viv = 0, tnt = 0, nw = 0, area = box.w * box.h;
+        for (let y = box.y; y < box.y + box.h; y++) for (let x = box.x; x < box.x + box.w; x++) { const i = y * W + x; col += color[i]; viv += vivid[i]; tnt += tint[i]; nw += nonwhite[i]; }
         let charArea = 0, total = 0, bigBlob = 0;
         ic.comps.forEach(c => {
           if (c.x0 >= box.x - 2 && c.x1 <= box.x + box.w + 2 && c.y0 >= box.y - 2 && c.y1 <= box.y + box.h + 2) {
@@ -3968,7 +3969,7 @@
           nwc++;
           if (Math.abs(gray[i] - gray[i + 1]) < 8 && Math.abs(gray[i] - gray[i + W]) < 8) flat++;
         }
-        return { colorFrac: col / area, vividFrac: viv / area, nonwhiteFrac: nw / area, textFrac: total ? charArea / total : 1, bigBlob, flatFrac: nwc ? flat / nwc : 1, ink: total };
+        return { colorFrac: col / area, tintFrac: tnt / area, vividFrac: viv / area, nonwhiteFrac: nw / area, textFrac: total ? charArea / total : 1, bigBlob, flatFrac: nwc ? flat / nwc : 1, ink: total };
       };
       const groups = (flags, len, gapMax) => { let n = 0, inRun = false, g = 0; for (let k = 0; k < len; k++) { if (flags[k]) { if (!inRun) { n++; inRun = true; } g = 0; } else if (inRun && ++g > gapMax) inRun = false; } return n; };
 
@@ -3984,8 +3985,11 @@
         const box = { x: c.x0, y: c.y0, w: c.w, h: c.h };
         const s = stats(box);
         // 表：縦横に罫線が走り（縦線は枠のほかに1本以上）、中身がほぼ文字だけで、鮮やかな色や文字らしくない大きな図形がない
+        // （グラフは淡い背景パネルや曲線を持つ。表は、背景に色がないか、色付きでも中身がほぼ文字だけ）
         const gridOk = hn >= 3 && vn >= 3;
-        if (gridOk && s.vividFrac < 0.03 && ((s.textFrac >= 0.6 && s.bigBlob < 0.03) || (s.textFrac >= 0.85 && s.bigBlob < 0.08))) found.push(Object.assign({ kind: 'table' }, box, { s }));
+        const plainTable = s.tintFrac < 0.10 && s.vividFrac < 0.03 && s.textFrac >= 0.6 && s.bigBlob < 0.08;
+        const colourTable = s.textFrac >= 0.95 && s.bigBlob < 0.01 && s.vividFrac < 0.05;
+        if (gridOk && (plainTable || colourTable)) found.push(Object.assign({ kind: 'table' }, box, { s }));
         else if (s.bigBlob < 0.05 && s.textFrac >= 0.72 && s.colorFrac < 0.05 && s.vividFrac < 0.01) return;   // 文字だけの囲み（会話文など）
         else found.push(Object.assign({ kind: photoLike(s) ? 'photo' : 'graph', container: box.w * box.h >= pageArea * 0.25 }, box, { s }));
       });
@@ -4031,13 +4035,67 @@
         for (let x = b.x; x < b.x + b.w; x++) { let n = 0; for (let y = b.y; y < b.y + b.h; y++) n += nonwhite[y * W + x]; colBlank.push(n <= b.h * 0.012); }
         for (let y = b.y; y < b.y + b.h; y++) { let n = 0; for (let x = b.x; x < b.x + b.w; x++) n += nonwhite[y * W + x]; rowBlank.push(n <= b.w * 0.012); }
         const bands = (flags, minLen) => { const out = []; let st = -1; flags.forEach((f, k) => { if (f && st < 0) st = k; if ((!f || k === flags.length - 1) && st >= 0) { const en = f ? k : k - 1; if (en - st + 1 >= minLen && st > 70 && en < flags.length - 70) out.push([st, en]); st = -1; } }); return out; };
-        const vb = bands(colBlank, 6), hb = bands(rowBlank, 14);
+        const vb = bands(colBlank, 3), hb = bands(rowBlank, 12);
+        // 枠の上辺・下辺の横線が、同じ位置で終わり、すぐ隣から別の横線が始まっていれば、そこが2つの図の境目
+        // （目盛り線の途切れと区別するため、終わる行・始まる行が、縦に大きく離れて複数あることを求める）
+        if (!vb.length) {
+          const ends = [], starts = [];
+          for (let y = b.y; y < b.y + b.h; y++) {
+            let st = -1;
+            for (let x = b.x; x <= b.x + b.w; x++) {
+              const on = x < b.x + b.w && lineH[y * W + x];
+              if (on && st < 0) st = x;
+              if (!on && st >= 0) { if (x - st >= 0.2 * b.w) { starts.push({ x: st - b.x, y }); ends.push({ x: x - 1 - b.x, y }); } st = -1; }
+            }
+          }
+          const spread = arr => arr.length ? Math.max(...arr.map(p => p.y)) - Math.min(...arr.map(p => p.y)) : 0;
+          for (const e of ends) {
+            if (e.x <= 70) continue;
+            const rowsE = ends.filter(p => Math.abs(p.x - e.x) <= 2);
+            if (spread(rowsE) < 0.5 * b.h) continue;
+            const t = starts.find(p => p.x - e.x >= 0 && p.x - e.x <= 8 && p.x < b.w - 70);
+            if (!t) continue;
+            const rowsS = starts.filter(p => Math.abs(p.x - t.x) <= 2);
+            if (spread(rowsS) >= 0.35 * b.h) { vb.push([e.x, t.x]); break; }
+          }
+        }
+        // すき間がほとんどなくても、縦の長い枠線が2本ぴったり並んでいれば、そこが図の境目（隣り合う2つの枠）
+        if (!vb.length) {
+          const cl = [];
+          let st = -1;
+          const tall = [];
+          for (let x = b.x; x < b.x + b.w; x++) { let n = 0; for (let y = b.y; y < b.y + b.h; y++) n += lineV[y * W + x]; tall.push(n >= b.h * 0.8); }
+          tall.forEach((f, k) => { if (f && st < 0) st = k; if ((!f || k === tall.length - 1) && st >= 0) { cl.push([st, f ? k : k - 1]); st = -1; } });
+          for (let i = 0; i + 1 < cl.length; i++) {
+            if (cl[i + 1][0] - cl[i][1] <= 8 && cl[i][1] - cl[i][0] <= 6 && cl[i + 1][1] - cl[i + 1][0] <= 6 && cl[i][1] > 70 && cl[i + 1][0] < b.w - 70) vb.push([cl[i][1], cl[i + 1][0]]);
+          }
+        }
         if (vb.length) { const m = Math.round((vb[0][0] + vb[0][1]) / 2); return [...splitBox({ x: b.x, y: b.y, w: m, h: b.h, kind: b.kind, s: b.s }, depth + 1), ...splitBox({ x: b.x + m, y: b.y, w: b.w - m, h: b.h, kind: b.kind, s: b.s }, depth + 1)]; }
-        if (hb.length) { const m = Math.round((hb[0][0] + hb[0][1]) / 2); return [...splitBox({ x: b.x, y: b.y, w: b.w, h: m, kind: b.kind, s: b.s }, depth + 1), ...splitBox({ x: b.x, y: b.y + m, w: b.w, h: b.h - m, kind: b.kind, s: b.s }, depth + 1)]; }
         return [b];
       };
       const splitted = [];
       found.forEach(f => { if (f.kind === 'table' || f.w * f.h < pageArea * 0.04) splitted.push(f); else splitBox(f, 0).forEach(p => splitted.push(p)); });
+      // --- 図の上にある、短い見出し行（「5図　日本の輸入相手国別…」など）を含める
+      const rowInk = (y, x0, x1) => { let n = 0; for (let x = x0; x <= x1; x++) n += ink[y * W + x]; return n; };
+      const withTitle = b => {
+        if (b.w < 80) return b;
+        const xa = Math.max(0, b.x - 40), xb = Math.min(W - 1, b.x + b.w + 40);
+        let y = b.y - 1, gap = 0;
+        while (y > 0 && gap <= 5 && rowInk(y, b.x, b.x + b.w) === 0) { y--; gap++; }   // 図と見出しのすき間
+        if (gap > 5 || y <= 0) return b;
+        const bottom = y;
+        let blank = 0;
+        while (y > 0 && blank < 3) { if (rowInk(y, xa, xb) === 0) blank++; else blank = 0; y--; }
+        const top = y + blank + 1, hh = bottom - top + 1;
+        if (hh < 8 || hh > 30) return b;
+        let l = W, r = 0, n = 0;
+        for (let yy = top; yy <= bottom; yy++) for (let x = xa; x <= xb; x++) if (ink[yy * W + x]) { if (x < l) l = x; if (x > r) r = x; n++; }
+        if (l < b.x - 12 || r > b.x + b.w + 12 || l > b.x + 0.35 * b.w || (r - l) > 0.8 * b.w || n / ((r - l + 1) * hh) > 0.4) return b;
+        const nb = Object.assign({}, b, { y: top, h: b.y + b.h - top });
+        return splitted.some(o => o !== b && inside(o, nb) > 0 && inside(nb, o) > 0) ? b : nb;
+      };
+      const titled = splitted.map(withTitle);
+      splitted.length = 0; titled.forEach(t => splitted.push(t));
       // --- 整理：極端に細長いもの・小さいものを除き、大きい領域に含まれる小さい領域は捨てる
       // 大きな囲みの中に、まとまった図・表が入っているときは、外側の囲みは捨てて中の図・表を残す
       const outerOut = new Set();
@@ -5195,8 +5253,8 @@
             // PDFに画像として埋め込まれていて、すでに切り出されているものとは重ねて数えない
             const nr = { x: r.x / c.width, y: r.y / c.height, w: r.w / c.width, h: r.h / c.height };
             if (embedded.some(e => figIou(nr, e.nrect) > 0.4)) return;
-            const pad = 6, sx = Math.max(0, Math.floor(r.x / f) - pad), sy = Math.max(0, Math.floor(r.y / f) - pad);
-            const sw = Math.min(im.naturalWidth - sx, Math.ceil(r.w / f) + pad * 2), sh = Math.min(im.naturalHeight - sy, Math.ceil(r.h / f) + pad * 2);
+            const pad = 6, padTop = 2, sx = Math.max(0, Math.floor(r.x / f) - pad), sy = Math.max(0, Math.floor(r.y / f) - padTop);   // 上は、上にある文章の一部が入らないよう余白を小さくする
+            const sw = Math.min(im.naturalWidth - sx, Math.ceil(r.w / f) + pad * 2), sh = Math.min(im.naturalHeight - sy, Math.ceil(r.h / f) + pad + padTop);
             const cc = document.createElement('canvas'); cc.width = sw; cc.height = sh;
             cc.getContext('2d').drawImage(im, sx, sy, sw, sh, 0, 0, sw, sh);
             items.push({ kind: r.kind, src: img.name, target: t, dataUrl: cc.toDataURL(r.kind === 'photo' ? 'image/jpeg' : 'image/png', 0.92), w: sw, h: sh, added: false });
